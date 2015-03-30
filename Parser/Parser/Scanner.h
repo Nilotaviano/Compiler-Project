@@ -7,20 +7,19 @@
 
 #include "Token.h"
 
-using namespace std;
+typedef std::shared_ptr<Token> TokenPtr;
 
 class Scanner
 {
-private:
-  typedef std::shared_ptr<Token> TokenPtr;
-
 public:
 	Scanner(FILE* fp);
 	~Scanner();
-  TokenPtr GetCurrentToken() { return current_token_; }
   TokenPtr GetNextToken();
+  int GetCurrentLine() { return num_lines_; }
+  int GetCurrentColumn() { return num_columns_; }
   string GetError() { return error_msg_; }
   bool get_end_of_file_(){ return end_of_file_; }
+  TokenPtr GetCurrentToken() { return current_token_; }
 private:
 	FILE* file_pointer_;
   char current_char_;

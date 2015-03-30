@@ -56,6 +56,12 @@ TokenPtr Scanner::GetNextToken()
     error_msg_ = "End of file";
     return nullptr;
   }
+  else {
+    num_columns_++;
+    error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + current_char_ + "': Caractere inválido";
+    current_char_ = fgetc(file_pointer_);
+    return nullptr;
+  }
 
 }
 
@@ -98,6 +104,7 @@ TokenPtr Scanner::HandleNumber(string current_lexeme)
 
 TokenPtr Scanner::HandleFloat(string current_lexeme)
 {
+  char last_char = current_char_;
   current_lexeme += current_char_;
   current_char_ = fgetc(file_pointer_);
   num_columns_++;
@@ -117,18 +124,33 @@ TokenPtr Scanner::HandleFloat(string current_lexeme)
     return token;
   }
   else {
-    error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo token lido t: Float mal formado";
+    error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Float mal formado";
     return nullptr;
   }
 }
 
 TokenPtr Scanner::HandleChar(string current_lexeme)
 {
+  char last_char = current_char_;
   current_lexeme += current_char_;
   current_char_ = fgetc(file_pointer_);
   num_columns_++;
 
   if (current_char_ != '\'') {
+
+    if (current_char_ == EOF) {
+      end_of_file_ = true;
+      error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Fim de arquivo dentro de caractere";
+      return nullptr;
+    }
+    if (current_char_ == '\n') {
+      current_char_ = fgetc(file_pointer_);
+      error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Char mal formado";
+      num_columns_ = 0;
+      num_lines_++;
+      return nullptr;
+    }
+
     current_lexeme += current_char_;
     current_char_ = fgetc(file_pointer_);
     num_columns_++;
@@ -142,12 +164,39 @@ TokenPtr Scanner::HandleChar(string current_lexeme)
       return token;
     }
     else {
-      error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo token lido t: Char mal formado";
+      while (current_char_ != '\'') {
+        if (current_char_ == '\n') {
+          current_char_ = fgetc(file_pointer_);
+          error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Char mal formado";
+          num_columns_ = 0;
+          num_lines_++;
+          return nullptr;
+        }
+        else if (current_char_ == EOF) {
+          end_of_file_ = true;
+          error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Fim de arquivo dentro de caractere";
+          return nullptr;
+        }
+        num_columns_++;
+        last_char = current_char_;
+        current_lexeme += current_char_;
+        current_char_ = fgetc(file_pointer_);
+      }
+      num_columns_++;
+      last_char = current_char_;
+      current_lexeme += current_char_;
+      current_char_ = fgetc(file_pointer_);
+
+      error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Char mal formado";
       return nullptr;
     }
   }
   else {
-    error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo token lido t: Char mal formado, esperado ao menos um caractere";
+    last_char = current_char_;
+    current_lexeme += current_char_;
+    current_char_ = fgetc(file_pointer_);
+    num_columns_++;
+    error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Char mal formado, esperado ao menos um caractere";
     return nullptr;
   }
 }
@@ -204,6 +253,7 @@ TokenPtr Scanner::HandleArithmeticOp(string current_lexeme)
 TokenPtr Scanner::HandleRelationalOp(string current_lexeme)
 {
   if (current_char_ == '!') {
+    char last_char = current_char_;
     current_lexeme += current_char_;
     current_char_ = fgetc(file_pointer_);
     num_columns_++;
@@ -216,7 +266,7 @@ TokenPtr Scanner::HandleRelationalOp(string current_lexeme)
       return TokenPtr(new Token(current_lexeme, NOT_EQUAL));
     }
     else {
-      error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo token lido t: Exclamação não seguida de '='";
+      error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Exclamação não seguida de '='";
       return nullptr;
     }
   }
@@ -333,9 +383,10 @@ TokenPtr Scanner::HandleLineComment() {
 }
 
 TokenPtr Scanner::HandleBlockComment() {
-
+  char last_char = current_char_;
   while ((current_char_ = fgetc(file_pointer_)) != EOF) {
     num_columns_++;
+    last_char = current_char_;
 
     if (current_char_ == '*') {
       current_char_ = fgetc(file_pointer_);
@@ -361,11 +412,11 @@ TokenPtr Scanner::HandleBlockComment() {
 
   if (current_char_ == EOF) {
     end_of_file_ = true;
-    error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo token lido t: Fim de arquivo dentro de comentario em bloco";
+    error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Fim de arquivo dentro de comentario em bloco";
     return nullptr;
   }
   else {
-    current_char_ == fgetc(file_pointer_);
+    current_char_ = fgetc(file_pointer_);
     num_columns_++;
 
     return GetNextToken();

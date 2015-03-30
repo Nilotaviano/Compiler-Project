@@ -40,7 +40,8 @@ public:
 	~Token();
   string get_lexeme() { return lexeme_; }
   TokenClassEnum get_token_class() { return token_class_; }
-  string getTokenClassString() { return token_class_string_map[token_class_]; }
+  string GetTokenClassString() { return token_class_string_map[token_class_]; }
+  string ToString() { return token_class_string_map[token_class_] + ": " + lexeme_; }
 private:
 	string lexeme_;
 	TokenClassEnum token_class_;
