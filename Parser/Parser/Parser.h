@@ -34,5 +34,22 @@ private:
 	bool ArithmeticExpression();//  <expr_arit> ::= <expr_arit> "+" <termo>   | <expr_arit> "-" <termo> | <termo>
 	bool Term();				//  <termo> ::= <termo> "*" <fator> | <termo> “/” <fator> | <fator>
 	bool Factor();				//  <fator> ::= “(“ <expr_arit> “)” | <id> | <real> | <inteiro> | <char>
+
+	enum class Production {
+		PROGRAM,
+		BLOCK,
+		VARIABLE_DECLARATION,
+		TYPE,
+		COMMAND,
+		BASIC_COMMAND,
+		ITERATION,
+		ASSIGNMENT,
+		RELATIONAL_EXPRESSION,
+		ARITHMETIC_EXPRESSION,
+		TERM,
+		FACTOR
+	};
+
+	bool IsInFirst(TokenPtr token, Production production);
 };
 
