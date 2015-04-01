@@ -264,7 +264,7 @@ bool Parser::Command()
                 if (!LexycalErrorOccurred()) {
                   if (Command()) {
                     tokens_.push_back(current_token_);
-                    current_token_ = scanner.GetNextToken();
+                     current_token_ = scanner.GetNextToken();
 
                     if (!LexycalErrorOccurred()) {
                       if (current_token_->get_lexeme() == "else") {
@@ -279,6 +279,10 @@ bool Parser::Command()
                         }
                       }
                       else {
+                        scanner.UngetToken(current_token_);
+
+                        current_token_ = tokens_.back();
+                        tokens_.pop_back();
                         return true;
                       }
                     }

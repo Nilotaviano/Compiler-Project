@@ -20,10 +20,12 @@ public:
   string GetError() { return error_msg_; }
   bool get_end_of_file_(){ return end_of_file_; }
   TokenPtr GetCurrentToken() { return current_token_; }
+  void UngetToken(TokenPtr token);
 private:
 	FILE* file_pointer_;
   char current_char_;
   TokenPtr current_token_;
+  TokenPtr returned_token_;
 	int num_lines_;
 	int num_columns_;
   string error_msg_;

@@ -3,7 +3,8 @@
 typedef std::shared_ptr<Token> TokenPtr;
 
 Scanner::Scanner(FILE* fp)
-:file_pointer_(fp)
+:file_pointer_(fp),
+returned_token_(nullptr)
 {
   num_lines_ = 1;
   num_columns_ = 1;
@@ -25,6 +26,12 @@ Scanner::~Scanner()
 //If nullptr is returned, use GetError()
 TokenPtr Scanner::GetNextToken()
 {
+  if (returned_token_ != nullptr) {
+    TokenPtr aux = returned_token_;
+    returned_token_ = nullptr;
+    return aux;
+  }
+
   string current_lexeme = "";
   while (isWhiteSpace(current_char_)) {
     HandleWhiteSpace();
@@ -421,4 +428,9 @@ TokenPtr Scanner::HandleBlockComment() {
 
     return GetNextToken();
   }
+}
+
+void Scanner::UngetToken(TokenPtr token)
+{
+  returned_token_ = token;
 }
