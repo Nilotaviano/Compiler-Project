@@ -397,7 +397,17 @@ bool Parser::Iteration()
 
 										if (!LexycalErrorOccurred()) {
 											if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
-												return true;
+												tokens_.push_back(current_token_);
+												current_token_ = scanner.GetNextToken();
+
+												if (!LexycalErrorOccurred()) {
+													if (current_token_->get_token_class() == TokenClassEnum::SEMICOLON) {
+														return true;
+													}
+													else {
+														ReportSyntaxError("Esperado ';' no final de uma expressão do while");
+													}
+												}
 											}
 											else {
 												ReportSyntaxError("Esperado o simbolo ')'");
@@ -419,26 +429,174 @@ bool Parser::Iteration()
 
 bool Parser::Assignment()
 {
+	if (current_token_->get_token_class() == TokenClassEnum::IDENTIFIER) {
+		tokens_.push_back(current_token_);
+		current_token_ = scanner.GetNextToken();
+
+		if (!LexycalErrorOccurred()) {
+			if (current_token_->get_token_class() == TokenClassEnum::ASSIGNMENT) {
+				tokens_.push_back(current_token_);
+				current_token_ = scanner.GetNextToken();
+
+				if (!LexycalErrorOccurred()) {
+					if (ArithmeticExpression()) {
+						tokens_.push_back(current_token_);
+						current_token_ = scanner.GetNextToken();
+
+						if (!LexycalErrorOccurred()) {
+							if (current_token_->get_token_class() == TokenClassEnum::SEMICOLON) {
+								return true;
+							}
+							else {
+								ReportSyntaxError("Esperado o simbolo ';'");
+							}
+						}
+					}
+				}
+			}
+			else {
+				ReportSyntaxError("Esperado o simbolo '=' para atribuição");
+			}
+		}
+	}
 	return false;
 }
 
 bool Parser::RelationalExpression()
 {
+  if (ArithmeticExpression()) {
+    tokens_.push_back(current_token_);
+    current_token_ = scanner.GetNextToken();
+
+    if (!LexycalErrorOccurred()) {
+      if (current_token_->get_token_class() == TokenClassEnum::EQUALS ||
+        current_token_->get_token_class() == TokenClassEnum::LESS ||
+        current_token_->get_token_class() == TokenClassEnum::LESS_OR_EQUAL ||
+        current_token_->get_token_class() == TokenClassEnum::GREATER ||
+        current_token_->get_token_class() == TokenClassEnum::GREATER_OR_EQUAL ||
+        current_token_->get_token_class() == TokenClassEnum::NOT_EQUAL)
+      {
+        tokens_.push_back(current_token_);
+        current_token_ = scanner.GetNextToken();
+
+        if (!LexycalErrorOccurred()) {
+          return ArithmeticExpression();
+        }
+      }
+    }
+    else {
+      ReportSyntaxError("Esperado um operador booleano (==, !=, >, >=, <, ,=)");
+    }
+  }
 	return false;
 }
 
 bool Parser::ArithmeticExpression()
 {
+  if (Term()) {
+    tokens_.push_back(current_token_);
+    current_token_ = scanner.GetNextToken();
+
+    if (!LexycalErrorOccurred()) {
+      return ArithmeticExpressionAlt();
+    }
+  }
 	return false;
+}
+
+bool Parser::ArithmeticExpressionAlt()
+{
+  if (current_token_->get_token_class() == TokenClassEnum::PLUS ||
+      current_token_->get_token_class() == TokenClassEnum::MINUS)
+  {
+    tokens_.push_back(current_token_);
+    current_token_ = scanner.GetNextToken();
+
+    if (!LexycalErrorOccurred()) {
+      if (Term()) {
+        tokens_.push_back(current_token_);
+        current_token_ = scanner.GetNextToken();
+
+        if (!LexycalErrorOccurred()) {
+          return ArithmeticExpressionAlt();
+        }
+      }
+    }
+  }
+  else {
+    return true;
+  }
+  return false;
 }
 
 bool Parser::Term()
 {
+  if (Factor()) {
+    tokens_.push_back(current_token_);
+    current_token_ = scanner.GetNextToken();
+
+    if (!LexycalErrorOccurred()) {
+      return TermAlt();
+    }
+  }
+	return false;
+}
+
+bool Parser::TermAlt()
+{
+  if (current_token_->get_token_class() == TokenClassEnum::MULTIPLICATION ||
+      current_token_->get_token_class() == TokenClassEnum::DIVISION)
+  {
+    tokens_.push_back(current_token_);
+    current_token_ = scanner.GetNextToken();
+
+    if (!LexycalErrorOccurred()) {
+      if (Factor()) {
+        tokens_.push_back(current_token_);
+        current_token_ = scanner.GetNextToken();
+
+        if (!LexycalErrorOccurred()) {
+          return TermAlt();
+        }
+      }
+    }
+  }
+  else {
+    return true;
+  }
 	return false;
 }
 
 bool Parser::Factor()
 {
+	if (current_token_->get_token_class() == TokenClassEnum::L_PAREN) {
+
+		tokens_.push_back(current_token_);
+		current_token_ = scanner.GetNextToken();
+
+		if (!LexycalErrorOccurred()) {
+			if (ArithmeticExpression()) {
+				tokens_.push_back(current_token_);
+				current_token_ = scanner.GetNextToken();
+
+				if (!LexycalErrorOccurred()) {
+					if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
+						return true;
+					}
+					else {
+						ReportSyntaxError("Esperado o simbolo ')'");
+					}
+				}
+			}
+		}
+	}
+	else if (current_token_->get_token_class() == TokenClassEnum::IDENTIFIER ||
+				    current_token_->get_token_class() == TokenClassEnum::INTEGER ||
+				    current_token_->get_token_class() == TokenClassEnum::FLOAT ||
+				    current_token_->get_token_class() == TokenClassEnum::CHAR) 
+	{
+		return true;
+	}
 	return false;
 }
 
