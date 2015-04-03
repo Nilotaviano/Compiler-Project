@@ -33,7 +33,12 @@ void Parser::Begin()
 
 void Parser::ReportSyntaxError(string error)
 {
-  cout << "ERRO de sintaxe na linha " + to_string(scanner.GetCurrentLine()) + " coluna " + to_string(scanner.GetCurrentColumn()) + ", ultimo token lido '" + current_token_->ToString() + "': " + error + "\n";
+  if (current_token_ != nullptr) {
+    cout << "ERRO de sintaxe na linha " + to_string(scanner.GetCurrentLine()) + " coluna " + to_string(scanner.GetCurrentColumn()) + ", ultimo token lido '" + current_token_->ToString() + "': " + error + "\n";
+  }
+  else {
+    cout << "ERRO de sintaxe na linha " + to_string(scanner.GetCurrentLine()) + " coluna " + to_string(scanner.GetCurrentColumn()) + ", ultimo token lido '" + tokens_.back()->ToString() + "': " + error + "\n";
+  }
 }
 
 void Parser::ReportLexycalError(string error)
@@ -44,8 +49,14 @@ void Parser::ReportLexycalError(string error)
 bool Parser::LexycalErrorOccurred()
 {
   if (current_token_ == nullptr) {
-    cout << scanner.GetError() << "\n";
+    if (!scanner.IsEndOfFile()) {
+      cout << scanner.GetError() << "\n";
+    }
+    else {
+      ReportSyntaxError("Fim inesperado de arquivo");
+    }
     return true;
+
   }
   else {
     return false;
@@ -56,69 +67,53 @@ bool Parser::Program()
 {
   current_token_ = scanner.GetNextToken();
 
-  //Error
-  if (current_token_ == nullptr) {
-    cout << scanner.GetError() << "\n";
-    return false;
-  }
-  else if (current_token_->get_token_class() == TokenClassEnum::RESERVED_WORD && current_token_->get_lexeme() == "int") {
-    tokens_.push_back(current_token_);
-    current_token_ = scanner.GetNextToken();
-
-    if (current_token_ == nullptr) {
-      cout << scanner.GetError() << "\n";
-      return false;
-    }
-    else if (current_token_->get_token_class() == TokenClassEnum::RESERVED_WORD && current_token_->get_lexeme() == "main") {
+  if (!LexycalErrorOccurred())  {
+    if (current_token_->get_token_class() == TokenClassEnum::RESERVED_WORD && current_token_->get_lexeme() == "int") {
       tokens_.push_back(current_token_);
       current_token_ = scanner.GetNextToken();
 
-      if (current_token_ == nullptr) {
-        cout << scanner.GetError() << "\n";
-        return false;
-      }
-      else if (current_token_->get_token_class() == TokenClassEnum::L_PAREN) {
-        tokens_.push_back(current_token_);
-        current_token_ = scanner.GetNextToken();
-
-        if (current_token_ == nullptr) {
-          cout << scanner.GetError() << "\n";
-          return false;
-        }
-        else if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
+      if (!LexycalErrorOccurred())  {
+        if (current_token_->get_token_class() == TokenClassEnum::RESERVED_WORD && current_token_->get_lexeme() == "main") {
           tokens_.push_back(current_token_);
           current_token_ = scanner.GetNextToken();
 
-          if (current_token_ == nullptr) {
-            cout << scanner.GetError() << "\n";
-            return false;
-          }
-          else if (Block()) {
-            return true;
-          }
-          else {
-            return false;
+          if (!LexycalErrorOccurred())  {
+            if (current_token_->get_token_class() == TokenClassEnum::L_PAREN) {
+              tokens_.push_back(current_token_);
+              current_token_ = scanner.GetNextToken();
+
+              if (!LexycalErrorOccurred())  {
+                if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
+                  tokens_.push_back(current_token_);
+                  current_token_ = scanner.GetNextToken();
+
+                  if (!LexycalErrorOccurred())  {
+                    if (Block()) {
+                      return true;
+                    }
+                  }
+                }
+                else {
+                  ReportSyntaxError("Esperado o simbolo '('");
+                }
+              }
+            }
+            else {
+              ReportSyntaxError("Esperado o simbolo '('");
+            }
           }
         }
         else {
-          ReportSyntaxError("Esperado o simbolo '('");
-          return false;
+          ReportSyntaxError("Esperada a palavra-chave 'main'");
         }
-      }
-      else {
-        ReportSyntaxError("Esperado o simbolo '('");
-        return false;
       }
     }
     else {
-      ReportSyntaxError("Esperada a palavra-chave 'main'");
-      return false;
+      ReportSyntaxError("Esperada a palavra-chave 'int'");
     }
   }
-  else {
-    ReportSyntaxError("Esperada a palavra-chave 'int'");
-    return false;
-  }
+
+  return false;
 }
 
 bool Parser::Block()
@@ -191,7 +186,7 @@ bool Parser::VariableDeclaration()
 
             if (!LexycalErrorOccurred()) {
 
-              if (current_token_->get_token_class() != IDENTIFIER) {
+              if (current_token_->get_token_class() != TokenClassEnum::IDENTIFIER) {
                 ReportSyntaxError("Esperado um idenficador");
                 return false;
               }
@@ -207,27 +202,19 @@ bool Parser::VariableDeclaration()
             else {
               return false;
             }
-          }//while comma
+          }
 
           if (current_token_->get_token_class() == TokenClassEnum::SEMICOLON) {
             return true;
           }
           else {
             ReportSyntaxError("Esperado o simbolo ';'");
-            return false;
           }
-        }
-        else {
-          return false;
         }
       }
       else {
         ReportSyntaxError("Esperado ao menos um identificador");
-        return false;
       }
-    }
-    else {
-      return false;
     }
   }
   return false;
@@ -271,7 +258,7 @@ bool Parser::Command()
                 if (!LexycalErrorOccurred()) {
                   if (Command()) {
                     tokens_.push_back(current_token_);
-                     current_token_ = scanner.GetNextToken();
+                    current_token_ = scanner.GetNextToken();
 
                     if (!LexycalErrorOccurred()) {
                       if (current_token_->get_lexeme() == "else") {
@@ -280,9 +267,6 @@ bool Parser::Command()
 
                         if (!LexycalErrorOccurred()) {
                           return Command();
-                        }
-                        else {
-                          return false;
                         }
                       }
                       else {
@@ -293,47 +277,26 @@ bool Parser::Command()
                         return true;
                       }
                     }
-                    else {
-                      return false;
-                    }
                   }
-                  else {
-                    ReportSyntaxError("Esperado ao menos um comando");
-                    return false;
-                  }
-                }
-                else {
-                  return false;
                 }
               }
               else {
                 ReportSyntaxError("Esperado o simbolo ')'");
-                return false;
               }
             }
-            else {
-              ReportSyntaxError("Esperada uma expressão relacional");
-              return false;
-            }
-          }
-          else {
-            return false;
           }
         }
         else {
           ReportSyntaxError("Esperado o simbolo '('");
-          return false;
         }
-      }
-      else {
-        return false;
       }
     }
   }
   else {
-    ReportSyntaxError("Esperada um comando básico, uma iteração ou um 'if'");
-    return false;
+    ReportSyntaxError("Esperado ao menos um comando");
   }
+
+  return false;
 }
 
 bool Parser::BasicCommand()
@@ -360,10 +323,7 @@ bool Parser::Iteration()
 
         if (!LexycalErrorOccurred()) {
           if (RelationalExpression()) {
-            //tokens_.push_back(current_token_);
-            //current_token_ = scanner.GetNextToken();
 
-            if (!LexycalErrorOccurred()) {
               if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
                 tokens_.push_back(current_token_);
                 current_token_ = scanner.GetNextToken();
@@ -375,11 +335,12 @@ bool Parser::Iteration()
               else{
                 ReportSyntaxError("Esperado o simbolo ')'");
               }
-            }
           }
         }
       }
-      ReportSyntaxError("Esperado o simbolo '('");
+      else {
+        ReportSyntaxError("Esperado o simbolo '('");
+      }
     }
   }
   else if (current_token_->get_lexeme() == "do") {
@@ -403,10 +364,7 @@ bool Parser::Iteration()
 
                 if (!LexycalErrorOccurred()) {
                   if (RelationalExpression()) {
-                    //tokens_.push_back(current_token_);
-                    //current_token_ = scanner.GetNextToken();
 
-                    if (!LexycalErrorOccurred()) {
                       if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
                         tokens_.push_back(current_token_);
                         current_token_ = scanner.GetNextToken();
@@ -416,21 +374,24 @@ bool Parser::Iteration()
                             return true;
                           }
                           else {
-                            ReportSyntaxError("Esperado ';' no final de uma expressão do while");
+                            ReportSyntaxError("Esperado o simbolo ';' no final de uma expressão 'do' 'while'");
                           }
                         }
                       }
                       else {
                         ReportSyntaxError("Esperado o simbolo ')'");
                       }
-                    }
                   }
                 }
               }
-              ReportSyntaxError("Esperado o simbolo '('");
+              else {
+                ReportSyntaxError("Esperado o simbolo '('");
+              }
             }
           }
-          ReportSyntaxError("Esperada a palavra reservada 'while'");
+          else {
+            ReportSyntaxError("Esperada a palavra reservada 'while'");
+          }
         }
       }
     }
@@ -451,17 +412,13 @@ bool Parser::Assignment()
 
         if (!LexycalErrorOccurred()) {
           if (ArithmeticExpression()) {
-            //tokens_.push_back(current_token_);
-            //current_token_ = scanner.GetNextToken();
 
-            if (!LexycalErrorOccurred()) {
               if (current_token_->get_token_class() == TokenClassEnum::SEMICOLON) {
                 return true;
               }
               else {
                 ReportSyntaxError("Esperado o simbolo ';'");
               }
-            }
           }
         }
       }
@@ -476,27 +433,23 @@ bool Parser::Assignment()
 bool Parser::RelationalExpression()
 {
   if (ArithmeticExpression()) {
-    //tokens_.push_back(current_token_);
-    //current_token_ = scanner.GetNextToken();
 
-    if (!LexycalErrorOccurred()) {
-      if (current_token_->get_token_class() == TokenClassEnum::EQUALS ||
-        current_token_->get_token_class() == TokenClassEnum::LESS ||
-        current_token_->get_token_class() == TokenClassEnum::LESS_OR_EQUAL ||
-        current_token_->get_token_class() == TokenClassEnum::GREATER ||
-        current_token_->get_token_class() == TokenClassEnum::GREATER_OR_EQUAL ||
-        current_token_->get_token_class() == TokenClassEnum::NOT_EQUAL)
-      {
-        tokens_.push_back(current_token_);
-        current_token_ = scanner.GetNextToken();
+    if (current_token_->get_token_class() == TokenClassEnum::EQUALS ||
+      current_token_->get_token_class() == TokenClassEnum::LESS ||
+      current_token_->get_token_class() == TokenClassEnum::LESS_OR_EQUAL ||
+      current_token_->get_token_class() == TokenClassEnum::GREATER ||
+      current_token_->get_token_class() == TokenClassEnum::GREATER_OR_EQUAL ||
+      current_token_->get_token_class() == TokenClassEnum::NOT_EQUAL)
+    {
+      tokens_.push_back(current_token_);
+      current_token_ = scanner.GetNextToken();
 
-        if (!LexycalErrorOccurred()) {
-          return ArithmeticExpression();
-        }
+      if (!LexycalErrorOccurred()) {
+        return ArithmeticExpression();
       }
     }
     else {
-      ReportSyntaxError("Esperado um operador booleano (==, !=, >, >=, <, ,=)");
+      ReportSyntaxError("Esperado um operador booleano (==, !=, >, >=, <,=)");
     }
   }
   return false;
@@ -505,12 +458,8 @@ bool Parser::RelationalExpression()
 bool Parser::ArithmeticExpression()
 {
   if (Term()) {
-    //tokens_.push_back(current_token_);
-    //current_token_ = scanner.GetNextToken();
 
-    if (!LexycalErrorOccurred()) {
-      return ArithmeticExpressionAlt();
-    }
+    return ArithmeticExpressionAlt();
   }
   return false;
 }
@@ -525,18 +474,15 @@ bool Parser::ArithmeticExpressionAlt()
 
     if (!LexycalErrorOccurred()) {
       if (Term()) {
-        //tokens_.push_back(current_token_);
-        //current_token_ = scanner.GetNextToken();
 
-        if (!LexycalErrorOccurred()) {
-          return ArithmeticExpressionAlt();
-        }
+        return ArithmeticExpressionAlt();
       }
     }
   }
   else {
     return true;
   }
+
   return false;
 }
 
@@ -550,6 +496,7 @@ bool Parser::Term()
       return TermAlt();
     }
   }
+
   return false;
 }
 
@@ -575,6 +522,7 @@ bool Parser::TermAlt()
   else {
     return true;
   }
+
   return false;
 }
 
@@ -587,16 +535,13 @@ bool Parser::Factor()
 
     if (!LexycalErrorOccurred()) {
       if (ArithmeticExpression()) {
-        //tokens_.push_back(current_token_);
-        //current_token_ = scanner.GetNextToken();
-        if (!LexycalErrorOccurred()) {
+
           if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
             return true;
           }
           else {
             ReportSyntaxError("Esperado o simbolo ')'");
           }
-        }
       }
     }
   }
@@ -606,6 +551,9 @@ bool Parser::Factor()
     current_token_->get_token_class() == TokenClassEnum::CHAR)
   {
     return true;
+  }
+  else {
+    ReportSyntaxError("Esperado um identificador, literal numerico, caractere ou o simbolo '('.");
   }
   return false;
 }

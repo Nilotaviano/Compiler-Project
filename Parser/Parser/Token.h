@@ -5,7 +5,7 @@
 
 using namespace std;
 
-typedef enum TokenClassEnum
+enum class TokenClassEnum
 {
   //TODO
   IDENTIFIER,           //[a-zA-Z][a-zA-Z0-9|_]*
@@ -15,7 +15,7 @@ typedef enum TokenClassEnum
   LESS_OR_EQUAL,        //<=
   EQUALS,                //==
   NOT_EQUAL,            //!=
-  PLUS,                 
+  PLUS,
   MINUS,
   MULTIPLICATION,
   DIVISION,

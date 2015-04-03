@@ -65,7 +65,7 @@ TokenPtr Scanner::GetNextToken()
   }
   else {
     num_columns_++;
-    error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + current_char_ + "': Caractere inválido";
+    error_msg_ = "Erro na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + current_char_ + "': Caractere inválido";
     current_char_ = fgetc(file_pointer_);
     return nullptr;
   }
@@ -79,7 +79,7 @@ void Scanner::HandleWhiteSpace()
     ++num_columns_;
     break;
   case '\t':
-    num_columns_ += 4;  //TAB counts as 4 columns
+    num_columns_ += 4;  //Tab counts as 4 columns
     break;
   case '\n':
     num_columns_ = 0;
@@ -105,7 +105,7 @@ TokenPtr Scanner::HandleNumber(string current_lexeme)
     return HandleFloat(current_lexeme);
   }
   else {
-    return TokenPtr(new Token(current_lexeme, INTEGER));
+    return TokenPtr(new Token(current_lexeme,TokenClassEnum::INTEGER));
   }
 }
 
@@ -127,11 +127,11 @@ TokenPtr Scanner::HandleFloat(string current_lexeme)
       num_columns_++;
     }
 
-    TokenPtr token = TokenPtr(new Token(current_lexeme, FLOAT));
+    TokenPtr token = TokenPtr(new Token(current_lexeme,TokenClassEnum::FLOAT));
     return token;
   }
   else {
-    error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Float mal formado";
+    error_msg_ = "Erro na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Float mal formado";
     return nullptr;
   }
 }
@@ -147,12 +147,12 @@ TokenPtr Scanner::HandleChar(string current_lexeme)
 
     if (current_char_ == EOF) {
       end_of_file_ = true;
-      error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Fim de arquivo dentro de caractere";
+      error_msg_ = "Erro na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Fim de arquivo dentro de caractere";
       return nullptr;
     }
     if (current_char_ == '\n') {
       current_char_ = fgetc(file_pointer_);
-      error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Char mal formado";
+      error_msg_ = "Erro na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Char mal formado";
       num_columns_ = 0;
       num_lines_++;
       return nullptr;
@@ -167,21 +167,21 @@ TokenPtr Scanner::HandleChar(string current_lexeme)
       current_char_ = fgetc(file_pointer_);
       num_columns_++;
 
-      TokenPtr token = TokenPtr(new Token(current_lexeme, CHAR));
+      TokenPtr token = TokenPtr(new Token(current_lexeme,TokenClassEnum::CHAR));
       return token;
     }
     else {
       while (current_char_ != '\'') {
         if (current_char_ == '\n') {
           current_char_ = fgetc(file_pointer_);
-          error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Char mal formado";
+          error_msg_ = "Erro na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Char mal formado";
           num_columns_ = 0;
           num_lines_++;
           return nullptr;
         }
         else if (current_char_ == EOF) {
           end_of_file_ = true;
-          error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Fim de arquivo dentro de caractere";
+          error_msg_ = "Erro na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Fim de arquivo dentro de caractere";
           return nullptr;
         }
         num_columns_++;
@@ -194,7 +194,7 @@ TokenPtr Scanner::HandleChar(string current_lexeme)
       current_lexeme += current_char_;
       current_char_ = fgetc(file_pointer_);
 
-      error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Char mal formado";
+      error_msg_ = "Erro na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Char mal formado";
       return nullptr;
     }
   }
@@ -203,7 +203,7 @@ TokenPtr Scanner::HandleChar(string current_lexeme)
     current_lexeme += current_char_;
     current_char_ = fgetc(file_pointer_);
     num_columns_++;
-    error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Char mal formado, esperado ao menos um caractere";
+    error_msg_ = "Erro na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Char mal formado, esperado ao menos um caractere";
     return nullptr;
   }
 }
@@ -215,13 +215,13 @@ TokenPtr Scanner::HandleArithmeticOp(string current_lexeme)
 
   switch (current_char_) {
   case '+':
-    token = TokenPtr(new Token(current_lexeme, PLUS));
+    token = TokenPtr(new Token(current_lexeme,TokenClassEnum::PLUS));
     break;
   case '-':
-    token = TokenPtr(new Token(current_lexeme, MINUS));
+    token = TokenPtr(new Token(current_lexeme,TokenClassEnum::MINUS));
     break;
   case '*':
-    token = TokenPtr(new Token(current_lexeme, MULTIPLICATION));
+    token = TokenPtr(new Token(current_lexeme,TokenClassEnum::MULTIPLICATION));
     break;
   case '/':
     //Gotta check for line and block comments
@@ -235,7 +235,7 @@ TokenPtr Scanner::HandleArithmeticOp(string current_lexeme)
       return HandleLineComment();
     }
     else {
-      return TokenPtr(new Token(current_lexeme, DIVISION));
+      return TokenPtr(new Token(current_lexeme,TokenClassEnum::DIVISION));
     }
     break;
   case '=':
@@ -247,7 +247,7 @@ TokenPtr Scanner::HandleArithmeticOp(string current_lexeme)
       return HandleRelationalOp(current_lexeme);
     }
     else {
-      return TokenPtr(new Token(current_lexeme, ASSIGNMENT));
+      return TokenPtr(new Token(current_lexeme,TokenClassEnum::ASSIGNMENT));
     }
   }
 
@@ -270,10 +270,10 @@ TokenPtr Scanner::HandleRelationalOp(string current_lexeme)
       current_char_ = fgetc(file_pointer_);
       num_columns_++;
 
-      return TokenPtr(new Token(current_lexeme, NOT_EQUAL));
+      return TokenPtr(new Token(current_lexeme,TokenClassEnum::NOT_EQUAL));
     }
     else {
-      error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Exclamação não seguida de '='";
+      error_msg_ = "Erro na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Exclamação não seguida de '='";
       return nullptr;
     }
   }
@@ -282,7 +282,7 @@ TokenPtr Scanner::HandleRelationalOp(string current_lexeme)
     current_char_ = fgetc(file_pointer_);
     num_columns_++;
 
-    return TokenPtr(new Token(current_lexeme, EQUALS));
+    return TokenPtr(new Token(current_lexeme,TokenClassEnum::EQUALS));
   }
   else {
     current_lexeme += current_char_;
@@ -296,16 +296,16 @@ TokenPtr Scanner::HandleRelationalOp(string current_lexeme)
     }
 
     if (current_lexeme == ">") {
-      return TokenPtr(new Token(current_lexeme, GREATER));
+      return TokenPtr(new Token(current_lexeme,TokenClassEnum::GREATER));
     }
     else if (current_lexeme == "<") {
-      return TokenPtr(new Token(current_lexeme, LESS));
+      return TokenPtr(new Token(current_lexeme,TokenClassEnum::LESS));
     }
     else if (current_lexeme == ">=") {
-      return TokenPtr(new Token(current_lexeme, GREATER_OR_EQUAL));
+      return TokenPtr(new Token(current_lexeme,TokenClassEnum::GREATER_OR_EQUAL));
     }
     else if (current_lexeme == "<=") {
-      return TokenPtr(new Token(current_lexeme, LESS_OR_EQUAL));
+      return TokenPtr(new Token(current_lexeme,TokenClassEnum::LESS_OR_EQUAL));
     }
   }
 }
@@ -326,12 +326,12 @@ TokenPtr Scanner::HandleIdentifier(string current_lexeme)
     return HandleReservedWord(current_lexeme);
   }
   else {
-    return TokenPtr(new Token(current_lexeme, IDENTIFIER));
+    return TokenPtr(new Token(current_lexeme,TokenClassEnum::IDENTIFIER));
   }
 }
 
 TokenPtr Scanner::HandleReservedWord(string current_lexeme) {
-  return TokenPtr(new Token(current_lexeme, RESERVED_WORD));
+  return TokenPtr(new Token(current_lexeme,TokenClassEnum::RESERVED_WORD));
 }
 
 TokenPtr Scanner::HandleSpecial(string current_lexeme)
@@ -342,22 +342,22 @@ TokenPtr Scanner::HandleSpecial(string current_lexeme)
 
   switch (current_char_) {
   case '(':
-    token = TokenPtr(new Token(current_lexeme, L_PAREN));
+    token = TokenPtr(new Token(current_lexeme,TokenClassEnum::L_PAREN));
     break;
   case ')':
-    token = TokenPtr(new Token(current_lexeme, R_PAREN));
+    token = TokenPtr(new Token(current_lexeme,TokenClassEnum::R_PAREN));
     break;
   case '{':
-    token = TokenPtr(new Token(current_lexeme, L_BRACE));
+    token = TokenPtr(new Token(current_lexeme,TokenClassEnum::L_BRACE));
     break;
   case '}':
-    token = TokenPtr(new Token(current_lexeme, R_BRACE));
+    token = TokenPtr(new Token(current_lexeme,TokenClassEnum::R_BRACE));
     break;
   case',':
-    token = TokenPtr(new Token(current_lexeme, COMMA));
+    token = TokenPtr(new Token(current_lexeme,TokenClassEnum::COMMA));
     break;
   case ';':
-    token = TokenPtr(new Token(current_lexeme, SEMICOLON));
+    token = TokenPtr(new Token(current_lexeme,TokenClassEnum::SEMICOLON));
     break;
   }
 
@@ -419,7 +419,7 @@ TokenPtr Scanner::HandleBlockComment() {
 
   if (current_char_ == EOF) {
     end_of_file_ = true;
-    error_msg_ = "ERRO na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Fim de arquivo dentro de comentario em bloco";
+    error_msg_ = "Erro na linha " + to_string(num_lines_) + " coluna " + to_string(num_columns_) + ", ultimo caractere lido '" + last_char + "': Fim de arquivo dentro de comentario em bloco";
     return nullptr;
   }
   else {

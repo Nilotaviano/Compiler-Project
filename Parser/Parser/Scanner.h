@@ -18,7 +18,7 @@ public:
   int GetCurrentLine() { return num_lines_; }
   int GetCurrentColumn() { return num_columns_; }
   string GetError() { return error_msg_; }
-  bool get_end_of_file_(){ return end_of_file_; }
+  bool IsEndOfFile(){ return end_of_file_; }
   TokenPtr GetCurrentToken() { return current_token_; }
   void UngetToken(TokenPtr token);
 private:
