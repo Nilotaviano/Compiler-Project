@@ -8,16 +8,14 @@ typedef std::list<TokenPtr> TokenList;
 class Parser
 {
 public:
-  Parser(char *file_name);
+  Parser(FILE* fp);
   ~Parser();
   void Begin();
-  bool IsOver() { return over_; };
 
 private:
   Scanner scanner;
   TokenList tokens_;
   TokenPtr current_token_;
-  bool over_;
 
   void ReportSyntaxError(string error);
   void ReportLexycalError(string error);

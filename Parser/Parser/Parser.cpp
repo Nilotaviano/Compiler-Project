@@ -4,9 +4,8 @@
 #include <iostream>
 
 
-Parser::Parser(char *file_name)
-  :scanner(fopen(file_name, "r")),
-  over_(false)
+Parser::Parser(FILE* fp)
+:scanner(fp)
 {
 }
 
@@ -17,7 +16,15 @@ Parser::~Parser()
 void Parser::Begin()
 {
   if (Program()) {
-    cout << "Ok!\n";
+    tokens_.push_back(current_token_);
+    current_token_ = scanner.GetNextToken();
+
+    if (current_token_ == nullptr) {
+      cout << "Ok!\n";
+    }
+    else {
+      ReportSyntaxError("Não pode haver código fora da função 'main'");
+    }
   }
   else {
     cout << "Erro(s) encontrado(s)!\n";
