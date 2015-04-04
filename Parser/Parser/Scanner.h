@@ -20,12 +20,13 @@ public:
   string GetError() { return error_msg_; }
   bool IsEndOfFile(){ return end_of_file_; }
   TokenPtr GetCurrentToken() { return current_token_; }
-  void UngetToken(TokenPtr token);
+  void UngetToken(TokenPtr token) { returned_token_ = token; }
+
 private:
 	FILE* file_pointer_;
   char current_char_;
   TokenPtr current_token_;
-  TokenPtr returned_token_;
+  TokenPtr returned_token_; //Not using a list/stack because only one token can be returned at a time.
 	int num_lines_;
 	int num_columns_;
   string error_msg_;
@@ -33,11 +34,11 @@ private:
   string reserved_words_[9];
 
   void HandleWhiteSpace();
-  bool inline isWhiteSpace(char ch) { return (ch == ' ' || ch == '\t' || ch == '\n'); }
-  bool inline isArithmeticOp(char ch) { return (ch =='+' || ch =='-' || ch =='/' || ch =='*' || ch == '='); }
-  bool inline isSpecialCharacter(char ch) { return (ch == '(' || ch == ')' || ch == '{' || ch == '}' || ch == ',' || ch == ';'); }
-  bool inline isRelationalOp(char ch) { return (ch == '<' || ch == '>' || ch == '!'); } //== will be treated first by HandleArithmeticOp
-  bool inline isReservedWord(string current_lexeme) { for (string rw : reserved_words_) { if (rw == current_lexeme) { return true; } } return false; }
+  bool inline IsWhiteSpace(char ch) { return (ch == ' ' || ch == '\t' || ch == '\n'); }
+  bool inline IsArithmeticOp(char ch) { return (ch =='+' || ch =='-' || ch =='/' || ch =='*' || ch == '='); }
+  bool inline IsSpecialCharacter(char ch) { return (ch == '(' || ch == ')' || ch == '{' || ch == '}' || ch == ',' || ch == ';'); }
+  bool inline IsRelationalOp(char ch) { return (ch == '<' || ch == '>' || ch == '!'); } //== will be treated first by HandleArithmeticOp
+  bool inline IsReservedWord(string current_lexeme) { for (string rw : reserved_words_) { if (rw == current_lexeme) { return true; } } return false; }
   TokenPtr HandleNumber(string current_lexeme);
   TokenPtr HandleFloat(string current_lexeme);
   TokenPtr HandleChar(string current_lexeme);

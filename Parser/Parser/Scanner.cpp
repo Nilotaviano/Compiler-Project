@@ -33,7 +33,7 @@ TokenPtr Scanner::GetNextToken()
   }
 
   string current_lexeme = "";
-  while (isWhiteSpace(current_char_)) {
+  while (IsWhiteSpace(current_char_)) {
     HandleWhiteSpace();
   }
 
@@ -46,16 +46,16 @@ TokenPtr Scanner::GetNextToken()
   else if (current_char_ == '\'') {
     return HandleChar(current_lexeme);
   }
-  else if (isArithmeticOp(current_char_)) {
+  else if (IsArithmeticOp(current_char_)) {
     return HandleArithmeticOp(current_lexeme);
   }
-  else if (isRelationalOp(current_char_)) {
+  else if (IsRelationalOp(current_char_)) {
     return HandleRelationalOp(current_lexeme);
   }
   else if (isalpha(current_char_) || current_char_ == '_') {
     return HandleIdentifier(current_lexeme);
   }
-  else if (isSpecialCharacter(current_char_)) {
+  else if (IsSpecialCharacter(current_char_)) {
     return HandleSpecial(current_lexeme);
   }
   else if (current_char_ == EOF) {
@@ -322,7 +322,7 @@ TokenPtr Scanner::HandleIdentifier(string current_lexeme)
     num_columns_++;
   }
 
-  if (isReservedWord(current_lexeme)) {
+  if (IsReservedWord(current_lexeme)) {
     return HandleReservedWord(current_lexeme);
   }
   else {
@@ -428,9 +428,4 @@ TokenPtr Scanner::HandleBlockComment() {
 
     return GetNextToken();
   }
-}
-
-void Scanner::UngetToken(TokenPtr token)
-{
-  returned_token_ = token;
 }
