@@ -1,6 +1,6 @@
 ﻿#include "Scanner.h"
 
-typedef std::shared_ptr<Token> TokenPtr;
+using std::to_string;
 
 Scanner::Scanner(FILE* fp)
 :file_pointer_(fp),
@@ -22,7 +22,6 @@ Scanner::~Scanner()
   fclose(file_pointer_);
 }
 
-//Will return the next token read from file
 //If nullptr is returned, use GetError()
 TokenPtr Scanner::GetNextToken()
 {
@@ -79,7 +78,7 @@ void Scanner::HandleWhiteSpace()
     ++num_columns_;
     break;
   case '\t':
-    num_columns_ += 4;  //Tab counts as 4 columns
+    num_columns_ += 4;
     break;
   case '\n':
     num_columns_ = 0;

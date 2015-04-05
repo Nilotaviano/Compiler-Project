@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <iostream>
 
+using std::cout;
+using std::to_string;
+
 
 Parser::Parser(FILE* fp)
 :scanner(fp)
@@ -39,11 +42,6 @@ void Parser::ReportSyntaxError(string error)
   else {
     cout << "ERRO de sintaxe na linha " + to_string(scanner.GetCurrentLine()) + " coluna " + to_string(scanner.GetCurrentColumn()) + ", ultimo token lido '" + tokens_.back()->ToString() + "': " + error + "\n";
   }
-}
-
-void Parser::ReportLexycalError(string error)
-{
-
 }
 
 bool Parser::LexycalErrorOccurred()
@@ -560,7 +558,6 @@ bool Parser::Factor()
 
 bool Parser::IsInFirst(TokenPtr token, Production production)
 {
-  //<comando> ::= <comando_básico> | <iteração> | if "("<expr_relacional>")" <comando> {else <comando>}?
   if (production == Production::COMMAND) {
     if (token->get_token_class() == TokenClassEnum::IDENTIFIER) {
       return true;

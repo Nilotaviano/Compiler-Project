@@ -3,6 +3,8 @@
 
 #include "Parser.h"
 
+using std::cout;
+
 int main(int argc, char* argv[])
 {
   if (argc == 2) {
@@ -22,7 +24,7 @@ int main(int argc, char* argv[])
     cout << "Numero de argumentos invalido: Esperado 1 argumento, " << (argc - 1) << " argumento(s) recebido(s).\n";
   }
 
-  cout << "Pressione enter para continuar..";
+  cout << "\nPressione enter para continuar..";
   getchar();
   return 0;
 }
