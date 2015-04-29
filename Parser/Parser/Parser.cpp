@@ -6,8 +6,11 @@
 
 Parser::Parser(char *file_name)
   :scanner(fopen(file_name, "r")),
-  over_(false)
+  over_(false), current_scope_(0)
 {
+  map_string_type_["int"] = DeclarationType::INT;
+  map_string_type_["float"] = DeclarationType::FLOAT;
+  map_string_type_["char"] = DeclarationType::CHAR;
 }
 
 Parser::~Parser()
@@ -119,7 +122,8 @@ bool Parser::Block()
   if (current_token_->get_token_class() == TokenClassEnum::L_BRACE) {
     tokens_.push_back(current_token_);
     current_token_ = scanner.GetNextToken();
-
+    IncrementScope();
+    
     if (!LexycalErrorOccurred()) {
 
       while (IsInFirst(current_token_, Production::VARIABLE_DECLARATION)) {
@@ -149,6 +153,7 @@ bool Parser::Block()
       }
 
       if (current_token_->get_token_class() == TokenClassEnum::R_BRACE) {
+        DecrementScope();
         return true;
       }
       else {
@@ -166,19 +171,39 @@ bool Parser::Block()
   }
 }
 
+//TODO checar se o nome da variavel ja foi declarada no escopo
 bool Parser::VariableDeclaration()
 {
-  if (Type()) {
+  DeclarationType current_declaration_type;
+  if (Type(&current_declaration_type)) {
     tokens_.push_back(current_token_);
     current_token_ = scanner.GetNextToken();
 
+    
+
     if (!LexycalErrorOccurred()) {
       if (current_token_->get_token_class() == TokenClassEnum::IDENTIFIER) {
+        Symbol symbol;
+
+        symbol.scope = current_scope_;
+        symbol.type = current_declaration_type;
+        symbol.name = current_token_->get_lexeme();
+
+        symbol_table_.push_front(symbol);
+
         tokens_.push_back(current_token_);
         current_token_ = scanner.GetNextToken();
 
         if (!LexycalErrorOccurred()) {
           while (current_token_->get_token_class() == TokenClassEnum::COMMA) {
+            Symbol symbol;
+
+            symbol.scope = current_scope_;
+            symbol.type = current_declaration_type;
+            symbol.name = current_token_->get_lexeme();
+
+            symbol_table_.push_front(symbol);
+            
             tokens_.push_back(current_token_);
             current_token_ = scanner.GetNextToken();
 
@@ -226,10 +251,11 @@ bool Parser::VariableDeclaration()
   return false;
 }
 
-bool Parser::Type()
+bool Parser::Type(DeclarationType *p_declaration_type)
 {
   if (current_token_->get_token_class() == TokenClassEnum::RESERVED_WORD) {
     if (current_token_->get_lexeme() == "int" || current_token_->get_lexeme() == "float" || current_token_->get_lexeme() == "char") {
+      *p_declaration_type = map_string_type_[current_token_->get_lexeme()];
       return true;
     }
   }
@@ -323,10 +349,9 @@ bool Parser::Command()
       }
     }
   }
-  else {
-    ReportSyntaxError("Esperada um comando básico, uma iteração ou um 'if'");
-    return false;
-  }
+
+  ReportSyntaxError("Comando inválido, esperado um comando básico, uma iteração ou um 'if'");
+  return false;
 }
 
 bool Parser::BasicCommand()
@@ -627,4 +652,13 @@ bool Parser::IsInFirst(TokenPtr token, Production production)
     }
   }
   return false;
+}
+
+void Parser::IncrementScope() {
+  current_scope_++;
+}
+
+void Parser::DecrementScope() {
+  current_scope_--;
+
 }

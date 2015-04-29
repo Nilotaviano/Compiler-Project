@@ -2,6 +2,7 @@
 
 #include "Scanner.h"
 #include "Token.h"
+#include "list"
 
 typedef std::list<TokenPtr> TokenList;
 
@@ -14,9 +15,24 @@ public:
   bool IsOver() { return over_; };
 
 private:
+  enum  class DeclarationType {
+    INT,
+    FLOAT,
+    CHAR
+  };
+
+  struct Symbol{
+    int scope;
+    std::string name;
+    DeclarationType type;
+  };
+
   Scanner scanner;
   TokenList tokens_;
   TokenPtr current_token_;
+  int current_scope_;
+  std::list<Symbol> symbol_table_;
+  map<string, DeclarationType> map_string_type_;
   bool over_;
 
   void ReportSyntaxError(string error);
@@ -25,7 +41,7 @@ private:
   bool Program();					//<programa> ::= int main"("")" <bloco>
   bool Block();					//<bloco> ::= “{“ {<decl_var>}* {<comando>}* “}”
   bool VariableDeclaration();		//decl_var> :: = <tipo> <id> {, <id>}*;
-  bool Type();					//<tipo> :: = int | float | char
+  bool Type(DeclarationType *p_declaration_type);					//<tipo> :: = int | float | char
   bool Command();					//<comando> ::= <comando_básico> | <iteração> | if "("<expr_relacional>")" <comando> {else <comando>}?
   bool BasicCommand();			//<comando_básico> ::= <atribuição> | <bloco>
   bool Iteration();				//<iteração> ::= while "("<expr_relacional>")" <comando> | do <comando> while "("<expr_relacional>")"";"
@@ -36,6 +52,8 @@ private:
   bool Term();					//Removed left recursion: <termo> ::= <fator><termo'>					//<termo> ::= <termo> "*" <fator> | <termo> “/” <fator> | <fator>					- LEFT RECURSIVE
   bool TermAlt();					//	<termo'> ::= <empty> | "*" <fator><termo'> | "/" <fator><termo'>
   bool Factor();					//<fator> ::= “(“ <expr_arit> “)” | <id> | <real> | <inteiro> | <char>
+  void IncrementScope();
+  void DecrementScope();
 
   enum class Production {
     PROGRAM,
