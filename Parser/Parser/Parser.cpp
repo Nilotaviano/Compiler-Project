@@ -2,14 +2,19 @@
 
 #include <stdio.h>
 #include <iostream>
+#include <algorithm>
 
 using std::cout;
 using std::to_string;
 
 
 Parser::Parser(FILE* fp)
-:scanner(fp)
+:scanner(fp),
+current_scope_(0)
 {
+  map_string_type_["int"] = DeclarationType::INTEGER;
+  map_string_type_["float"] = DeclarationType::FLOAT;
+  map_string_type_["char"] = DeclarationType::CHAR;
 }
 
 Parser::~Parser()
@@ -23,9 +28,9 @@ void Parser::Begin()
     current_token_ = scanner.GetNextToken();
 
     if (current_token_ == nullptr) {
-      cout << "Ok!\n";
-    }
-    else {
+    cout << "Ok!\n";
+  }
+  else {
       ReportSyntaxError("Não pode haver código fora da função 'main'");
     }
   }
@@ -34,21 +39,26 @@ void Parser::Begin()
   }
 }
 
+void Parser::ReportSemanticalError(string error)
+{
+  cout << "ERRO de sintaxe na linha " + to_string(scanner.GetCurrentLine()) + " coluna " + to_string(scanner.GetCurrentColumn()) + ", ultimo token lido '" + current_token_->ToString() + "': " + error + "\n";
+}
+
 void Parser::ReportSyntaxError(string error)
 {
   if (current_token_ != nullptr) {
-    cout << "ERRO de sintaxe na linha " + to_string(scanner.GetCurrentLine()) + " coluna " + to_string(scanner.GetCurrentColumn()) + ", ultimo token lido '" + current_token_->ToString() + "': " + error + "\n";
-  }
+  cout << "ERRO de sintaxe na linha " + to_string(scanner.GetCurrentLine()) + " coluna " + to_string(scanner.GetCurrentColumn()) + ", ultimo token lido '" + current_token_->ToString() + "': " + error + "\n";
+}
   else {
     cout << "ERRO de sintaxe na linha " + to_string(scanner.GetCurrentLine()) + " coluna " + to_string(scanner.GetCurrentColumn()) + ", ultimo token lido '" + tokens_.back()->ToString() + "': " + error + "\n";
-  }
+}
 }
 
 bool Parser::LexycalErrorOccurred()
 {
   if (current_token_ == nullptr) {
     if (!scanner.IsEndOfFile()) {
-      cout << scanner.GetError() << "\n";
+    cout << scanner.GetError() << "\n";
     }
     else {
       ReportSyntaxError("Fim inesperado de arquivo");
@@ -67,58 +77,59 @@ bool Parser::Program()
 
   if (!LexycalErrorOccurred())  {
     if (current_token_->get_token_class() == TokenClassEnum::RESERVED_WORD && current_token_->get_lexeme() == "int") {
-      tokens_.push_back(current_token_);
-      current_token_ = scanner.GetNextToken();
+    tokens_.push_back(current_token_);
+    current_token_ = scanner.GetNextToken();
 
       if (!LexycalErrorOccurred())  {
         if (current_token_->get_token_class() == TokenClassEnum::RESERVED_WORD && current_token_->get_lexeme() == "main") {
-          tokens_.push_back(current_token_);
-          current_token_ = scanner.GetNextToken();
+      tokens_.push_back(current_token_);
+      current_token_ = scanner.GetNextToken();
 
           if (!LexycalErrorOccurred())  {
             if (current_token_->get_token_class() == TokenClassEnum::L_PAREN) {
-              tokens_.push_back(current_token_);
-              current_token_ = scanner.GetNextToken();
+        tokens_.push_back(current_token_);
+        current_token_ = scanner.GetNextToken();
 
               if (!LexycalErrorOccurred())  {
                 if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
-                  tokens_.push_back(current_token_);
-                  current_token_ = scanner.GetNextToken();
+          tokens_.push_back(current_token_);
+          current_token_ = scanner.GetNextToken();
 
                   if (!LexycalErrorOccurred())  {
                     if (Block()) {
-                      return true;
-                    }
-                  }
-                }
-                else {
-                  ReportSyntaxError("Esperado o simbolo '('");
-                }
-              }
-            }
-            else {
-              ReportSyntaxError("Esperado o simbolo '('");
-            }
+            return true;
+          }
           }
         }
         else {
-          ReportSyntaxError("Esperada a palavra-chave 'main'");
+          ReportSyntaxError("Esperado o simbolo '('");
+                }
         }
+      }
+      else {
+        ReportSyntaxError("Esperado o simbolo '('");
+            }
       }
     }
     else {
-      ReportSyntaxError("Esperada a palavra-chave 'int'");
+      ReportSyntaxError("Esperada a palavra-chave 'main'");
+        }
+    }
+  }
+  else {
+    ReportSyntaxError("Esperada a palavra-chave 'int'");
     }
   }
 
-  return false;
-}
+    return false;
+  }
 
 bool Parser::Block()
 {
   if (current_token_->get_token_class() == TokenClassEnum::L_BRACE) {
     tokens_.push_back(current_token_);
     current_token_ = scanner.GetNextToken();
+    IncrementScope();
 
     if (!LexycalErrorOccurred()) {
 
@@ -149,6 +160,7 @@ bool Parser::Block()
       }
 
       if (current_token_->get_token_class() == TokenClassEnum::R_BRACE) {
+        DecrementScope();
         return true;
       }
       else {
@@ -166,19 +178,33 @@ bool Parser::Block()
   }
 }
 
+//TODO checar se o nome da variavel ja foi declarada no escopo
 bool Parser::VariableDeclaration()
 {
-  if (Type()) {
+  DeclarationType current_declaration_type;
+
+  if (Type(&current_declaration_type)) {
     tokens_.push_back(current_token_);
     current_token_ = scanner.GetNextToken();
 
+
+
     if (!LexycalErrorOccurred()) {
       if (current_token_->get_token_class() == TokenClassEnum::IDENTIFIER) {
+
+        if (SymbolExistsOnTable()) {
+          ReportSemanticalError("Variável já declarada no mesmo escopo.");
+          return false;
+        }
+
+        PushSymbolToTable(current_declaration_type);
+
         tokens_.push_back(current_token_);
         current_token_ = scanner.GetNextToken();
 
         if (!LexycalErrorOccurred()) {
           while (current_token_->get_token_class() == TokenClassEnum::COMMA) {
+
             tokens_.push_back(current_token_);
             current_token_ = scanner.GetNextToken();
 
@@ -189,6 +215,14 @@ bool Parser::VariableDeclaration()
                 return false;
               }
               else {
+
+                if (SymbolExistsOnTable()) {
+                  ReportSemanticalError("Variável já declarada no mesmo escopo.");
+                  return false;
+                }
+
+                PushSymbolToTable(current_declaration_type);
+
                 tokens_.push_back(current_token_);
                 current_token_ = scanner.GetNextToken();
 
@@ -209,19 +243,20 @@ bool Parser::VariableDeclaration()
             ReportSyntaxError("Esperado o simbolo ';'");
           }
         }
-      }
+        }
       else {
         ReportSyntaxError("Esperado ao menos um identificador");
       }
     }
-  }
+    }
   return false;
 }
 
-bool Parser::Type()
+bool Parser::Type(DeclarationType *p_declaration_type)
 {
   if (current_token_->get_token_class() == TokenClassEnum::RESERVED_WORD) {
     if (current_token_->get_lexeme() == "int" || current_token_->get_lexeme() == "float" || current_token_->get_lexeme() == "char") {
+      *p_declaration_type = map_string_type_[current_token_->get_lexeme()];
       return true;
     }
   }
@@ -256,7 +291,7 @@ bool Parser::Command()
                 if (!LexycalErrorOccurred()) {
                   if (Command()) {
                     tokens_.push_back(current_token_);
-                    current_token_ = scanner.GetNextToken();
+                     current_token_ = scanner.GetNextToken();
 
                     if (!LexycalErrorOccurred()) {
                       if (current_token_->get_lexeme() == "else") {
@@ -266,7 +301,7 @@ bool Parser::Command()
                         if (!LexycalErrorOccurred()) {
                           return Command();
                         }
-                      }
+                        }
                       else {
                         scanner.UngetToken(current_token_);
 
@@ -275,27 +310,24 @@ bool Parser::Command()
                         return true;
                       }
                     }
+                    }
                   }
-                }
-              }
-              else {
+                  }
+                else {
                 ReportSyntaxError("Esperado o simbolo ')'");
               }
             }
+            }
           }
-        }
-        else {
+          else {
           ReportSyntaxError("Esperado o simbolo '('");
         }
       }
+      }
     }
+    ReportSyntaxError("Comando inválido, esperado um comando básico, uma iteração ou um 'if'");
+    return false;
   }
-  else {
-    ReportSyntaxError("Esperado ao menos um comando");
-  }
-
-  return false;
-}
 
 bool Parser::BasicCommand()
 {
@@ -333,9 +365,9 @@ bool Parser::Iteration()
               else{
                 ReportSyntaxError("Esperado o simbolo ')'");
               }
+            }
           }
         }
-      }
       else {
         ReportSyntaxError("Esperado o simbolo '('");
       }
@@ -379,20 +411,20 @@ bool Parser::Iteration()
                       else {
                         ReportSyntaxError("Esperado o simbolo ')'");
                       }
+                    }
                   }
                 }
-              }
               else {
-                ReportSyntaxError("Esperado o simbolo '('");
-              }
+              ReportSyntaxError("Esperado o simbolo '('");
             }
           }
-          else {
-            ReportSyntaxError("Esperada a palavra reservada 'while'");
           }
+          else {
+          ReportSyntaxError("Esperada a palavra reservada 'while'");
         }
       }
     }
+  }
   }
   return false;
 }
@@ -417,9 +449,9 @@ bool Parser::Assignment()
               else {
                 ReportSyntaxError("Esperado o simbolo ';'");
               }
+            }
           }
         }
-      }
       else {
         ReportSyntaxError("Esperado o simbolo '=' para atribuição");
       }
@@ -432,20 +464,20 @@ bool Parser::RelationalExpression()
 {
   if (ArithmeticExpression()) {
 
-    if (current_token_->get_token_class() == TokenClassEnum::EQUALS ||
-      current_token_->get_token_class() == TokenClassEnum::LESS ||
-      current_token_->get_token_class() == TokenClassEnum::LESS_OR_EQUAL ||
-      current_token_->get_token_class() == TokenClassEnum::GREATER ||
-      current_token_->get_token_class() == TokenClassEnum::GREATER_OR_EQUAL ||
-      current_token_->get_token_class() == TokenClassEnum::NOT_EQUAL)
-    {
-      tokens_.push_back(current_token_);
-      current_token_ = scanner.GetNextToken();
+      if (current_token_->get_token_class() == TokenClassEnum::EQUALS ||
+        current_token_->get_token_class() == TokenClassEnum::LESS ||
+        current_token_->get_token_class() == TokenClassEnum::LESS_OR_EQUAL ||
+        current_token_->get_token_class() == TokenClassEnum::GREATER ||
+        current_token_->get_token_class() == TokenClassEnum::GREATER_OR_EQUAL ||
+        current_token_->get_token_class() == TokenClassEnum::NOT_EQUAL)
+      {
+        tokens_.push_back(current_token_);
+        current_token_ = scanner.GetNextToken();
 
-      if (!LexycalErrorOccurred()) {
-        return ArithmeticExpression();
+        if (!LexycalErrorOccurred()) {
+          return ArithmeticExpression();
+        }
       }
-    }
     else {
       ReportSyntaxError("Esperado um operador booleano (==, !=, >, >=, <,=)");
     }
@@ -457,8 +489,8 @@ bool Parser::ArithmeticExpression()
 {
   if (Term()) {
 
-    return ArithmeticExpressionAlt();
-  }
+      return ArithmeticExpressionAlt();
+    }
   return false;
 }
 
@@ -473,10 +505,10 @@ bool Parser::ArithmeticExpressionAlt()
     if (!LexycalErrorOccurred()) {
       if (Term()) {
 
-        return ArithmeticExpressionAlt();
+          return ArithmeticExpressionAlt();
+        }
       }
     }
-  }
   else {
     return true;
   }
@@ -540,9 +572,9 @@ bool Parser::Factor()
           else {
             ReportSyntaxError("Esperado o simbolo ')'");
           }
+        }
       }
     }
-  }
   else if (current_token_->get_token_class() == TokenClassEnum::IDENTIFIER ||
     current_token_->get_token_class() == TokenClassEnum::INTEGER ||
     current_token_->get_token_class() == TokenClassEnum::FLOAT ||
@@ -579,4 +611,39 @@ bool Parser::IsInFirst(TokenPtr token, Production production)
     }
   }
   return false;
+}
+
+inline void Parser::IncrementScope()
+{
+  current_scope_++;
+}
+
+inline void Parser::DecrementScope()
+{
+  symbol_table_.remove_if([&](Symbol s){ return s.scope == current_scope_; });
+  current_scope_--;
+}
+
+inline void Parser::PushSymbolToTable(DeclarationType current_declaration_type)
+{
+  Symbol symbol;
+
+  symbol.scope = current_scope_;
+  symbol.type = current_declaration_type;
+  symbol.name = current_token_->get_lexeme();
+
+  symbol_table_.push_front(symbol);
+}
+
+bool Parser::SymbolExistsOnTable() {
+  auto tmp_current_token = current_token_;
+  int tmp_current_scope = current_scope_;
+
+  auto foundItem = std::find_if(symbol_table_.begin(), symbol_table_.end(),
+    [tmp_current_token, tmp_current_scope](Symbol const& item)
+  {
+    return (item.scope == tmp_current_scope && item.name == tmp_current_token->get_lexeme());
+  });;
+
+  return foundItem != symbol_table_.end();
 }
