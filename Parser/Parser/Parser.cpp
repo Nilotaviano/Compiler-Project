@@ -7,7 +7,6 @@
 using std::cout;
 using std::to_string;
 
-
 Parser::Parser(FILE* fp)
 :scanner(fp),
 current_scope_(0)
@@ -178,7 +177,6 @@ bool Parser::Block()
   }
 }
 
-//TODO checar se o nome da variavel ja foi declarada no escopo
 bool Parser::VariableDeclaration()
 {
   DeclarationType current_declaration_type;
