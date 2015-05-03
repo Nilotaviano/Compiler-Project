@@ -8,17 +8,11 @@ typedef std::list<TokenPtr> TokenList;
 
 class Parser
 {
-public:
-  Parser(char *file_name);
-  ~Parser();
-  void Begin();
-  bool IsOver() { return over_; };
-
 private:
   enum  class DeclarationType {
-    INT,
-    FLOAT,
-    CHAR
+    INTEGER = TokenClassEnum::INTEGER,
+    FLOAT = TokenClassEnum::FLOAT,
+    CHAR = TokenClassEnum::CHAR
   };
 
   struct Symbol{
@@ -26,6 +20,28 @@ private:
     std::string name;
     DeclarationType type;
   };
+
+  enum class Production {
+    PROGRAM,
+    BLOCK,
+    VARIABLE_DECLARATION,
+    TYPE,
+    COMMAND,
+    BASIC_COMMAND,
+    ITERATION,
+    ASSIGNMENT,
+    RELATIONAL_EXPRESSION,
+    ARITHMETIC_EXPRESSION,
+    TERM,
+    FACTOR
+  };
+public:
+  Parser(char *file_name);
+  ~Parser();
+  void Begin();
+  bool IsOver() { return over_; };
+
+private:
 
   Scanner scanner;
   TokenList tokens_;
@@ -35,6 +51,7 @@ private:
   map<string, DeclarationType> map_string_type_;
   bool over_;
 
+  void ReportSemanticalError(string error);
   void ReportSyntaxError(string error);
   void ReportLexycalError(string error);
   bool LexycalErrorOccurred();
@@ -52,24 +69,11 @@ private:
   bool Term();					//Removed left recursion: <termo> ::= <fator><termo'>					//<termo> ::= <termo> "*" <fator> | <termo> “/” <fator> | <fator>					- LEFT RECURSIVE
   bool TermAlt();					//	<termo'> ::= <empty> | "*" <fator><termo'> | "/" <fator><termo'>
   bool Factor();					//<fator> ::= “(“ <expr_arit> “)” | <id> | <real> | <inteiro> | <char>
-  void IncrementScope();
-  void DecrementScope();
-
-  enum class Production {
-    PROGRAM,
-    BLOCK,
-    VARIABLE_DECLARATION,
-    TYPE,
-    COMMAND,
-    BASIC_COMMAND,
-    ITERATION,
-    ASSIGNMENT,
-    RELATIONAL_EXPRESSION,
-    ARITHMETIC_EXPRESSION,
-    TERM,
-    FACTOR
-  };
 
   bool IsInFirst(TokenPtr token, Production production);
+  void IncrementScope();
+  void DecrementScope();
+  void PushSymbolToTable(DeclarationType current_declaration_type);
+  bool SymbolExistsOnTable();
 };
 

@@ -2,13 +2,14 @@
 
 #include <stdio.h>
 #include <iostream>
+#include <algorithm>
 
 
 Parser::Parser(char *file_name)
-  :scanner(fopen(file_name, "r")),
-  over_(false), current_scope_(0)
+:scanner(fopen(file_name, "r")),
+over_(false), current_scope_(0)
 {
-  map_string_type_["int"] = DeclarationType::INT;
+  map_string_type_["int"] = DeclarationType::INTEGER;
   map_string_type_["float"] = DeclarationType::FLOAT;
   map_string_type_["char"] = DeclarationType::CHAR;
 }
@@ -25,6 +26,11 @@ void Parser::Begin()
   else {
     cout << "Erro(s) encontrado(s)!\n";
   }
+}
+
+void Parser::ReportSemanticalError(string error)
+{
+  cout << "ERRO de sintaxe na linha " + to_string(scanner.GetCurrentLine()) + " coluna " + to_string(scanner.GetCurrentColumn()) + ", ultimo token lido '" + current_token_->ToString() + "': " + error + "\n";
 }
 
 void Parser::ReportSyntaxError(string error)
@@ -123,7 +129,7 @@ bool Parser::Block()
     tokens_.push_back(current_token_);
     current_token_ = scanner.GetNextToken();
     IncrementScope();
-    
+
     if (!LexycalErrorOccurred()) {
 
       while (IsInFirst(current_token_, Production::VARIABLE_DECLARATION)) {
@@ -175,35 +181,29 @@ bool Parser::Block()
 bool Parser::VariableDeclaration()
 {
   DeclarationType current_declaration_type;
+
   if (Type(&current_declaration_type)) {
     tokens_.push_back(current_token_);
     current_token_ = scanner.GetNextToken();
 
-    
+
 
     if (!LexycalErrorOccurred()) {
       if (current_token_->get_token_class() == TokenClassEnum::IDENTIFIER) {
-        Symbol symbol;
 
-        symbol.scope = current_scope_;
-        symbol.type = current_declaration_type;
-        symbol.name = current_token_->get_lexeme();
+        if (SymbolExistsOnTable()) {
+          ReportSemanticalError("Variável já declarada no mesmo escopo.");
+          return false;
+        }
 
-        symbol_table_.push_front(symbol);
+        PushSymbolToTable(current_declaration_type);
 
         tokens_.push_back(current_token_);
         current_token_ = scanner.GetNextToken();
 
         if (!LexycalErrorOccurred()) {
           while (current_token_->get_token_class() == TokenClassEnum::COMMA) {
-            Symbol symbol;
 
-            symbol.scope = current_scope_;
-            symbol.type = current_declaration_type;
-            symbol.name = current_token_->get_lexeme();
-
-            symbol_table_.push_front(symbol);
-            
             tokens_.push_back(current_token_);
             current_token_ = scanner.GetNextToken();
 
@@ -214,6 +214,14 @@ bool Parser::VariableDeclaration()
                 return false;
               }
               else {
+
+                if (SymbolExistsOnTable()) {
+                  ReportSemanticalError("Variável já declarada no mesmo escopo.");
+                  return false;
+                }
+
+                PushSymbolToTable(current_declaration_type);
+
                 tokens_.push_back(current_token_);
                 current_token_ = scanner.GetNextToken();
 
@@ -290,7 +298,7 @@ bool Parser::Command()
                 if (!LexycalErrorOccurred()) {
                   if (Command()) {
                     tokens_.push_back(current_token_);
-                     current_token_ = scanner.GetNextToken();
+                    current_token_ = scanner.GetNextToken();
 
                     if (!LexycalErrorOccurred()) {
                       if (current_token_->get_lexeme() == "else") {
@@ -654,11 +662,37 @@ bool Parser::IsInFirst(TokenPtr token, Production production)
   return false;
 }
 
-void Parser::IncrementScope() {
+inline void Parser::IncrementScope()
+{
   current_scope_++;
 }
 
-void Parser::DecrementScope() {
+inline void Parser::DecrementScope()
+{
+  symbol_table_.remove_if([&](Symbol s){ return s.scope == current_scope_; });
   current_scope_--;
+}
 
+inline void Parser::PushSymbolToTable(DeclarationType current_declaration_type)
+{
+  Symbol symbol;
+
+  symbol.scope = current_scope_;
+  symbol.type = current_declaration_type;
+  symbol.name = current_token_->get_lexeme();
+
+  symbol_table_.push_front(symbol);
+}
+
+bool Parser::SymbolExistsOnTable() {
+  auto tmp_current_token = current_token_;
+  int tmp_current_scope = current_scope_;
+
+  auto foundItem = std::find_if(symbol_table_.begin(), symbol_table_.end(),
+    [tmp_current_token, tmp_current_scope](Symbol const& item)
+  {
+    return (item.scope == tmp_current_scope && item.name == tmp_current_token->get_lexeme());
+  });;
+
+  return foundItem != symbol_table_.end();
 }
