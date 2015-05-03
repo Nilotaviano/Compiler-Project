@@ -4,15 +4,14 @@
 #include "Token.h"
 #include "list"
 
-typedef std::list<TokenPtr> TokenList;
-
 class Parser
 {
 private:
   enum  class DeclarationType {
     INTEGER,
     FLOAT,
-    CHAR
+    CHAR,
+    UNKNOWN
   };
 
   struct Symbol{
@@ -43,7 +42,7 @@ public:
 private:
 
   Scanner scanner;
-  TokenList tokens_;
+  std::list<TokenPtr> tokens_;
   TokenPtr current_token_;
   int current_scope_;
   std::list<Symbol> symbol_table_;
@@ -54,25 +53,28 @@ private:
   void ReportLexycalError(string error);
   bool LexycalErrorOccurred();  //If an error occurred, will also print it. If end of file was found when this is called, this method will call ReportSyntaxError.
 
-  bool Program();					                            //<programa> ::= int main"("")" <bloco>
-  bool Block();					                              //<bloco> ::= “{“ {<decl_var>}* {<comando>}* “}”
-  bool VariableDeclaration();		                      //decl_var> :: = <tipo> <id> {, <id>}*;
-  bool Type(DeclarationType *p_declaration_type);			//<tipo> :: = int | float | char
-  bool Command();					                            //<comando> ::= <comando_básico> | <iteração> | if "("<expr_relacional>")" <comando> {else <comando>}?
-  bool BasicCommand();			                          //<comando_básico> ::= <atribuição> | <bloco>
-  bool Iteration();				                            //<iteração> ::= while "("<expr_relacional>")" <comando> | do <comando> while "("<expr_relacional>")"";"
-  bool Assignment();				                          //<atribuição> ::= <id> "=" <expr_arit> ";"
-  bool RelationalExpression();	                      //<expr_relacional> ::= <expr_arit> <op_relacional> <expr_arit>
-  bool ArithmeticExpression();	                      //Removed left recursion: <expr_arit> ::= <termo><expr_arit'>			//<expr_arit> ::= <expr_arit> "+" <termo>   | <expr_arit> "-" <termo> | <termo>	- LEFT RECURSIVE
-  bool ArithmeticExpressionAlt();	                    //expr_arit'> ::= <empty> | "+" <termo><expr_arit'> | "-" <termo><expr_arit'> 
-  bool Term();					                              //Removed left recursion: <termo> ::= <fator><termo'>					//<termo> ::= <termo> "*" <fator> | <termo> “/” <fator> | <fator>					- LEFT RECURSIVE
-  bool TermAlt();					                            //	<termo'> ::= <empty> | "*" <fator><termo'> | "/" <fator><termo'>
-  bool Factor();					                            //<fator> ::= “(“ <expr_arit> “)” | <id> | <real> | <inteiro> | <char>
+  bool Program();					                                                    //<programa> ::= int main"("")" <bloco>
+  bool Block();					                                                      //<bloco> ::= “{“ {<decl_var>}* {<comando>}* “}”
+  bool VariableDeclaration();		                                              //decl_var> :: = <tipo> <id> {, <id>}*;
+  bool Type(DeclarationType *p_declaration_type);			                        //<tipo> :: = int | float | char
+  bool Command();					                                                    //<comando> ::= <comando_básico> | <iteração> | if "("<expr_relacional>")" <comando> {else <comando>}?
+  bool BasicCommand();			                                                  //<comando_básico> ::= <atribuição> | <bloco>
+  bool Iteration();				                                                    //<iteração> ::= while "("<expr_relacional>")" <comando> | do <comando> while "("<expr_relacional>")"";"
+  bool Assignment();				                                                  //<atribuição> ::= <id> "=" <expr_arit> ";"
+  bool RelationalExpression();	                                              //<expr_relacional> ::= <expr_arit> <op_relacional> <expr_arit>
+  bool ArithmeticExpression(DeclarationType *my_type);	                      //Removed left recursion: <expr_arit> ::= <termo><expr_arit'>			//<expr_arit> ::= <expr_arit> "+" <termo>   | <expr_arit> "-" <termo> | <termo>	- LEFT RECURSIVE
+  bool ArithmeticExpressionAlt(DeclarationType *my_type);	                    //expr_arit'> ::= <empty> | "+" <termo><expr_arit'> | "-" <termo><expr_arit'> 
+  bool Term(DeclarationType *my_type);					                              //Removed left recursion: <termo> ::= <fator><termo'>					//<termo> ::= <termo> "*" <fator> | <termo> “/” <fator> | <fator>					- LEFT RECURSIVE
+  bool TermAlt(DeclarationType *my_type);					                            //	<termo'> ::= <empty> | "*" <fator><termo'> | "/" <fator><termo'>
+  bool Factor(DeclarationType *my_type);					                            //<fator> ::= “(“ <expr_arit> “)” | <id> | <real> | <inteiro> | <char>
 
   bool IsInFirst(TokenPtr token, Production production);
   void IncrementScope();
   void DecrementScope();
   void PushSymbolToTable(DeclarationType current_declaration_type);
-  bool SymbolExistsOnTable();
+  bool WasVariableDeclared();
+  DeclarationType GetVarType(string var_name);
+  bool IsCompatible(DeclarationType l_type, DeclarationType r_type);
+  DeclarationType GetHigherType(DeclarationType l_type, DeclarationType r_type);
 };
 
