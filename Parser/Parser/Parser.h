@@ -6,12 +6,13 @@
 
 class Parser
 {
+//Auxiliar structures
 private:
   enum  class DeclarationType {
     INTEGER,
     FLOAT,
     CHAR,
-    UNKNOWN
+    NONE
   };
 
   struct Symbol{
@@ -40,7 +41,6 @@ public:
   void Begin();
 
 private:
-
   Scanner scanner;
   std::list<TokenPtr> tokens_;
   TokenPtr current_token_;
@@ -48,11 +48,13 @@ private:
   std::list<Symbol> symbol_table_;
   map<string, DeclarationType> map_string_type_;
 
+  //Error reporting and checking
   void ReportSemanticalError(string error);
   void ReportSyntaxError(string error);
   void ReportLexycalError(string error);
   bool LexycalErrorOccurred();  //If an error occurred, will also print it. If end of file was found when this is called, this method will call ReportSyntaxError.
 
+  //Parser productions
   bool Program();					                                                    //<programa> ::= int main"("")" <bloco>
   bool Block();					                                                      //<bloco> ::= “{“ {<decl_var>}* {<comando>}* “}”
   bool VariableDeclaration();		                                              //decl_var> :: = <tipo> <id> {, <id>}*;
@@ -68,7 +70,10 @@ private:
   bool TermAlt(DeclarationType *my_type);					                            //	<termo'> ::= <empty> | "*" <fator><termo'> | "/" <fator><termo'>
   bool Factor(DeclarationType *my_type);					                            //<fator> ::= “(“ <expr_arit> “)” | <id> | <real> | <inteiro> | <char>
 
+  //Auxiliar methods
   bool IsInFirst(TokenPtr token, Production production);
+
+  //Semantic analysis
   void IncrementScope();
   void DecrementScope();
   void PushSymbolToTable(DeclarationType current_declaration_type);

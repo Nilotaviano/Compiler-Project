@@ -40,7 +40,7 @@ void Parser::Begin()
 
 void Parser::ReportSemanticalError(string error)
 {
-  cout << "ERRO de sintaxe na linha " + to_string(scanner.GetCurrentLine()) + " coluna " + to_string(scanner.GetCurrentColumn()) + ", ultimo token lido '" + current_token_->ToString() + "': " + error + "\n";
+  cout << "ERRO de semântica na linha " + to_string(scanner.GetCurrentLine()) + " coluna " + to_string(scanner.GetCurrentColumn()) + ", ultimo token lido '" + current_token_->ToString() + "': " + error + "\n";
 }
 
 void Parser::ReportSyntaxError(string error)
@@ -432,7 +432,7 @@ bool Parser::Assignment()
   if (current_token_->get_token_class() == TokenClassEnum::IDENTIFIER) {
     DeclarationType var_type = GetVarType(current_token_->get_lexeme());
 
-    if (var_type == DeclarationType::UNKNOWN) {
+    if (var_type == DeclarationType::NONE) {
       ReportSemanticalError("Variável não declarada");
     }
     else {
@@ -446,7 +446,7 @@ bool Parser::Assignment()
 
           if (!LexycalErrorOccurred()) {
 
-            DeclarationType expr_type = DeclarationType::UNKNOWN;
+            DeclarationType expr_type = DeclarationType::NONE;
             if (ArithmeticExpression(&expr_type)) {
 
               if (var_type != expr_type) {
@@ -476,7 +476,7 @@ bool Parser::Assignment()
 
 bool Parser::RelationalExpression()
 {
-  DeclarationType l_expr_type = DeclarationType::UNKNOWN;
+  DeclarationType l_expr_type = DeclarationType::NONE;
   if (ArithmeticExpression(&l_expr_type)) {
 
     if (current_token_->get_token_class() == TokenClassEnum::EQUALS ||
@@ -489,7 +489,7 @@ bool Parser::RelationalExpression()
       tokens_.push_back(current_token_);
       current_token_ = scanner.GetNextToken();
 
-      DeclarationType r_expr_type = DeclarationType::UNKNOWN;
+      DeclarationType r_expr_type = DeclarationType::NONE;
       if (!LexycalErrorOccurred()) {
         if (ArithmeticExpression(&r_expr_type)) {
           if (IsCompatible(l_expr_type, r_expr_type)) {
@@ -508,26 +508,30 @@ bool Parser::RelationalExpression()
   return false;
 }
 
-//TODO
 bool Parser::ArithmeticExpression(DeclarationType *my_type)
 {
   DeclarationType l_expr_type;
+
   if (Term(&l_expr_type)) {
-    DeclarationType r_expr_type = DeclarationType::UNKNOWN;
+    DeclarationType r_expr_type = DeclarationType::NONE;
+
     if (ArithmeticExpressionAlt(&r_expr_type)) {
-      if (r_expr_type == DeclarationType::UNKNOWN) {
+      if (r_expr_type == DeclarationType::NONE) {
         *my_type = l_expr_type;
         return true;
       }
-      else if () {
-
+      else if (IsCompatible(l_expr_type, r_expr_type)) {
+        *my_type = GetHigherType(l_expr_type, r_expr_type);
+        return true;
+      }
+      else {
+        ReportSemanticalError("Operandos de tipos incompativeis");
       }
     }
   }
   return false;
 }
 
-//TODO
 bool Parser::ArithmeticExpressionAlt(DeclarationType *my_type)
 {
   if (current_token_->get_token_class() == TokenClassEnum::PLUS ||
@@ -536,52 +540,24 @@ bool Parser::ArithmeticExpressionAlt(DeclarationType *my_type)
     tokens_.push_back(current_token_);
     current_token_ = scanner.GetNextToken();
 
-    DeclarationType r_expr_type = DeclarationType::UNKNOWN;
     if (!LexycalErrorOccurred()) {
-      if (Term(&r_expr_type)) {
+      DeclarationType l_expr_type = DeclarationType::NONE;
 
-        return ArithmeticExpressionAlt(&r_expr_type);
-      }
-    }
-  }
-  else {
-    return true;
-  }
+      if (Term(&l_expr_type)) {
+        DeclarationType r_expr_type = DeclarationType::NONE;
 
-  return false;
-}
-
-//TODO
-bool Parser::Term(DeclarationType *my_type)
-{
-  if (Factor(TODO)) {
-    tokens_.push_back(current_token_);
-    current_token_ = scanner.GetNextToken();
-
-    if (!LexycalErrorOccurred()) {
-      return TermAlt(TODO);
-    }
-  }
-
-  return false;
-}
-
-//TODO
-bool Parser::TermAlt(DeclarationType *my_type)
-{
-  if (current_token_->get_token_class() == TokenClassEnum::MULTIPLICATION ||
-    current_token_->get_token_class() == TokenClassEnum::DIVISION)
-  {
-    tokens_.push_back(current_token_);
-    current_token_ = scanner.GetNextToken();
-
-    if (!LexycalErrorOccurred()) {
-      if (Factor(TODO)) {
-        tokens_.push_back(current_token_);
-        current_token_ = scanner.GetNextToken();
-
-        if (!LexycalErrorOccurred()) {
-          return TermAlt(TODO);
+        if (ArithmeticExpressionAlt(&r_expr_type)) {
+          if (r_expr_type == DeclarationType::NONE) {
+            *my_type = l_expr_type;
+            return true;
+          }
+          else if (IsCompatible(l_expr_type, r_expr_type)) {
+            *my_type = GetHigherType(l_expr_type, r_expr_type);
+            return true;
+          }
+          else {
+            ReportSemanticalError("Operandos de tipos incompativeis");
+          }
         }
       }
     }
@@ -593,37 +569,150 @@ bool Parser::TermAlt(DeclarationType *my_type)
   return false;
 }
 
-//TODO
+bool Parser::Term(DeclarationType *my_type)
+{
+  DeclarationType l_expr_type;
+
+  if (Factor(&l_expr_type)) {
+    tokens_.push_back(current_token_);
+    current_token_ = scanner.GetNextToken();
+
+    if (!LexycalErrorOccurred()) {
+      DeclarationType r_expr_type = DeclarationType::NONE;
+
+      if (TermAlt(&r_expr_type)) {
+        if (r_expr_type == DeclarationType::NONE) {
+          *my_type = l_expr_type;
+          return true;
+        }
+        else if (IsCompatible(l_expr_type, r_expr_type)) {
+          *my_type = GetHigherType(l_expr_type, r_expr_type);
+          return true;
+        }
+        else {
+          ReportSemanticalError("Operandos de tipos incompativeis");
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+bool Parser::TermAlt(DeclarationType *my_type)
+{
+  if (current_token_->get_token_class() == TokenClassEnum::MULTIPLICATION ||
+    current_token_->get_token_class() == TokenClassEnum::DIVISION)
+  {
+    bool is_division = false;
+
+    if (current_token_->get_token_class() == TokenClassEnum::DIVISION) {
+      is_division = true;
+    }
+
+    tokens_.push_back(current_token_);
+    current_token_ = scanner.GetNextToken();
+
+    if (!LexycalErrorOccurred()) {
+      DeclarationType l_expr_type;
+
+      if (Factor(&l_expr_type)) {
+        tokens_.push_back(current_token_);
+        current_token_ = scanner.GetNextToken();
+
+        if (!LexycalErrorOccurred()) {
+          DeclarationType r_expr_type = DeclarationType::NONE;
+
+          if (TermAlt(&r_expr_type)) {
+            if (r_expr_type == DeclarationType::NONE) {
+              if (is_division && l_expr_type == DeclarationType::INTEGER) {
+                *my_type = DeclarationType::FLOAT;
+              }
+              else {
+                *my_type = l_expr_type;
+              }
+
+              return true;
+            }
+            else if (IsCompatible(l_expr_type, r_expr_type)) {
+              if (is_division && l_expr_type == DeclarationType::INTEGER) {
+                *my_type = DeclarationType::FLOAT;
+              }
+              else {
+                *my_type = GetHigherType(l_expr_type, r_expr_type);
+              }
+
+              return true;
+            }
+            else {
+              ReportSemanticalError("Operandos de tipos incompativeis");
+            }
+          }
+        }
+      }
+    }
+  }
+  else {
+    return true;
+  }
+
+  return false;
+}
+
 bool Parser::Factor(DeclarationType *my_type)
 {
+  bool result;
+
   if (current_token_->get_token_class() == TokenClassEnum::L_PAREN) {
 
     tokens_.push_back(current_token_);
     current_token_ = scanner.GetNextToken();
 
     if (!LexycalErrorOccurred()) {
-      if (ArithmeticExpression(TODO)) {
+      DeclarationType expr_type;
+
+      if (ArithmeticExpression(&expr_type)) {
 
         if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
-          return true;
+          *my_type = expr_type;
+          result = true;
         }
         else {
           ReportSyntaxError("Esperado o simbolo ')'");
+          result = false;
         }
       }
     }
   }
-  else if (current_token_->get_token_class() == TokenClassEnum::IDENTIFIER ||
-    current_token_->get_token_class() == TokenClassEnum::INTEGER ||
-    current_token_->get_token_class() == TokenClassEnum::FLOAT ||
-    current_token_->get_token_class() == TokenClassEnum::CHAR)
-  {
-    return true;
+  else if (current_token_->get_token_class() == TokenClassEnum::IDENTIFIER) {
+    *my_type = GetVarType(current_token_->get_lexeme());
+
+    if (*my_type != DeclarationType::NONE) {
+      result = true;
+    }
+    else {
+      ReportSemanticalError("Variável não declarada.");
+      result = false;
+    }
+  }
+  else if (current_token_->get_token_class() == TokenClassEnum::INTEGER) {
+    *my_type = DeclarationType::INTEGER;
+    result = true;
+  }
+  else if (current_token_->get_token_class() == TokenClassEnum::FLOAT) {
+    *my_type = DeclarationType::FLOAT;
+    result = true;
+  }
+  else if(current_token_->get_token_class() == TokenClassEnum::CHAR) {
+    *my_type = DeclarationType::CHAR;
+    result = true;
   }
   else {
     ReportSyntaxError("Esperado um identificador, literal numerico, caractere ou o simbolo '('.");
+    result = false;
   }
-  return false;
+
+  return result;
 }
 
 bool Parser::IsInFirst(TokenPtr token, Production production)
@@ -693,12 +782,12 @@ Parser::DeclarationType Parser::GetVarType(string var_name)
     return item.name == var_name;
   });;
 
-  return found_item != symbol_table_.end() ? found_item->type : DeclarationType::UNKNOWN;
+  return found_item != symbol_table_.end() ? found_item->type : DeclarationType::NONE;
 }
 
 bool Parser::IsCompatible(DeclarationType l_type, DeclarationType r_type)
 {
-  if (l_type != DeclarationType::UNKNOWN && r_type != DeclarationType::UNKNOWN) {
+  if (l_type != DeclarationType::NONE && r_type != DeclarationType::NONE) {
     return (l_type == r_type ||
       (l_type == DeclarationType::FLOAT && r_type == DeclarationType::INTEGER) ||
       (l_type == DeclarationType::INTEGER&& r_type == DeclarationType::FLOAT));
@@ -711,7 +800,7 @@ bool Parser::IsCompatible(DeclarationType l_type, DeclarationType r_type)
 
 Parser::DeclarationType Parser::GetHigherType(DeclarationType l_type, DeclarationType r_type)
 {
-  DeclarationType type = DeclarationType::UNKNOWN;
+  DeclarationType type = DeclarationType::NONE;
   if (l_type == r_type) {
     type = l_type;
   }
@@ -721,6 +810,6 @@ Parser::DeclarationType Parser::GetHigherType(DeclarationType l_type, Declaratio
   else if (l_type == DeclarationType::INTEGER && r_type == DeclarationType::FLOAT) {
     type = DeclarationType::FLOAT;
   }
-  
+
   return type;
 }

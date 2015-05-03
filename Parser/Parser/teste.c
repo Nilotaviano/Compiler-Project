@@ -1,51 +1,11 @@
 int main () {
-int i, in;
-float f, fl;
-char c, ch;
-char cha;
-
-{
-int i; int a, b;
-}
-{
-int i; int a, b;
-}
-{
-int i; int a, b;
-}
-{
-int i; int a, b;
-}
-{
-int i; int a, b;
-}
-{{{{{char c, d;}}}}}{{{{{int a, b,c,d,e,f,g,h;}}}}}{{{{{float c, d;}}}}}{{{{{char c, d;}}}}}{{{{{int a, b,c,d,e,f,g,h;}}}}}{{{{{float c, d;}}}}}
-{{{{{char c, d;}}}}}{{{{{int a, b,c,d,e,f,g,h;}}}}}{{{{{float c, d;}}}}}{{{{{char c, d;}}}}}{{{{{int a, b,c,d,e,f,g,h;}}}}}{{{{{float c, d;}}}}}
-{{{{{char c, d;}}}}}{{{{{int a, b,c,d,e,f,g,h;}}}}}{{{{{float c, d;}}}}}{{{{{char c, d;}}}}}{{{{{int a, b,c,d,e,f,g,h;}}}}}{{{{{float c, d;}}}}}
-{{{{{char c, d;}}}}}{{{{{int a, b,c,d,e,f,g,h;}}}}}{{{{{float c, d;}}}}}{{{{{char c, d;}}}}}{{{{{int a, b,c,d,e,f,g,h;}}}}}{{{{{float c, d;}}}}}
-{
-int i; int a, b;
-{
-int i; int a, b;
-{
-int i; int a, b;
-{
-int i; int a, b;
-{
-int i; int a, b;
-{
-int i; int a, b;
-{
-int i; int a, b;
-{
-int i; int a, b;
-{
-int i; int a, b;
-{
-int i; int a, b;
-}}}}}}}}}}
-do{
-int a;
-}while(a>10);
+	int a;
+	a = 10;
+	{
+		float a;
+		char b;
+		a = .5;
+		b = a;
+	}
 }
 //Fim
