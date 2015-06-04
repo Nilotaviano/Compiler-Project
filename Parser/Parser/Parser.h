@@ -69,6 +69,7 @@ private:
   bool Term(DeclarationType *my_type);					                              //Removed left recursion: <termo> ::= <fator><termo'>					//<termo> ::= <termo> "*" <fator> | <termo> “/” <fator> | <fator>					- LEFT RECURSIVE
   bool TermAlt(DeclarationType *my_type);					                            //	<termo'> ::= <empty> | "*" <fator><termo'> | "/" <fator><termo'>
   bool Factor(DeclarationType *my_type);					                            //<fator> ::= “(“ <expr_arit> “)” | <id> | <real> | <inteiro> | <char>
+  void PrintCode(string code_str);
 
   //Auxiliar methods
   bool IsInFirst(TokenPtr token, Production production);

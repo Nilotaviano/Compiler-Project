@@ -70,6 +70,11 @@ bool Parser::LexycalErrorOccurred()
   }
 }
 
+void Parser::PrintCode(string code_str)
+{
+  cout << code_str << '\n';
+}
+
 bool Parser::Program()
 {
   current_token_ = scanner.GetNextToken();
