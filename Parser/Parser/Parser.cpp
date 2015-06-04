@@ -309,6 +309,9 @@ bool Parser::Command()
                       }
                     }
                   }
+                  else {
+                    return false;
+                  }
                 }
               }
               else {
