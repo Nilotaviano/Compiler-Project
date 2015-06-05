@@ -70,11 +70,6 @@ bool Parser::LexycalErrorOccurred()
   }
 }
 
-void Parser::PrintCode(string code_str)
-{
-  cout << code_str << '\n';
-}
-
 bool Parser::Program()
 {
   current_token_ = scanner.GetNextToken();
@@ -612,11 +607,7 @@ bool Parser::TermAlt(DeclarationType *my_type)
   if (current_token_->get_token_class() == TokenClassEnum::MULTIPLICATION ||
     current_token_->get_token_class() == TokenClassEnum::DIVISION)
   {
-    bool is_division = false;
-
-    if (current_token_->get_token_class() == TokenClassEnum::DIVISION) {
-      is_division = true;
-    }
+    bool is_division = current_token_->get_token_class() == TokenClassEnum::DIVISION;
 
     tokens_.push_back(current_token_);
     current_token_ = scanner.GetNextToken();
@@ -800,10 +791,7 @@ bool Parser::IsCompatible(DeclarationType l_type, DeclarationType r_type)
       (l_type == DeclarationType::FLOAT && r_type == DeclarationType::INTEGER) ||
       (l_type == DeclarationType::INTEGER&& r_type == DeclarationType::FLOAT));
   }
-  else {
-    cout << "IsCompatible: TIPOS DESCONHECIDOS";
-    return false;
-  }
+  else return false;
 }
 
 Parser::DeclarationType Parser::GetHigherType(DeclarationType l_type, DeclarationType r_type)
@@ -812,10 +800,9 @@ Parser::DeclarationType Parser::GetHigherType(DeclarationType l_type, Declaratio
   if (l_type == r_type) {
     type = l_type;
   }
-  else if (l_type == DeclarationType::FLOAT && r_type == DeclarationType::INTEGER) {
-    type = DeclarationType::FLOAT;
-  }
-  else if (l_type == DeclarationType::INTEGER && r_type == DeclarationType::FLOAT) {
+  else if (l_type == DeclarationType::FLOAT && r_type == DeclarationType::INTEGER ||
+            l_type == DeclarationType::INTEGER && r_type == DeclarationType::FLOAT) 
+  {
     type = DeclarationType::FLOAT;
   }
 
