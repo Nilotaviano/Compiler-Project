@@ -273,61 +273,95 @@ bool Parser::Command()
       return Iteration();
     }
     else if (current_token_->get_lexeme() == "if") {
-      tokens_.push_back(current_token_);
-      current_token_ = scanner.GetNextToken();
-
-      if (!LexycalErrorOccurred()) {
-        if (current_token_->get_token_class() == TokenClassEnum::L_PAREN) {
-          tokens_.push_back(current_token_);
-          current_token_ = scanner.GetNextToken();
-
-          if (!LexycalErrorOccurred()) {
-            if (RelationalExpression()) {
-              if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
-                tokens_.push_back(current_token_);
-                current_token_ = scanner.GetNextToken();
-
-                if (!LexycalErrorOccurred()) {
-                  if (Command()) {
-                    tokens_.push_back(current_token_);
-                    current_token_ = scanner.GetNextToken();
-
-                    if (!LexycalErrorOccurred()) {
-                      if (current_token_->get_lexeme() == "else") {
-                        tokens_.push_back(current_token_);
-                        current_token_ = scanner.GetNextToken();
-
-                        if (!LexycalErrorOccurred()) {
-                          return Command();
-                        }
-                      }
-                      else {
-                        scanner.UngetToken(current_token_);
-
-                        current_token_ = tokens_.back();
-                        tokens_.pop_back();
-                        return true;
-                      }
-                    }
-                  }
-                  else {
-                    return false;
-                  }
-                }
-              }
-              else {
-                ReportSyntaxError("Esperado o simbolo ')'");
-              }
-            }
-          }
-        }
-        else {
-          ReportSyntaxError("Esperado o simbolo '('");
-        }
-      }
+      return If();
     }
   }
   ReportSyntaxError("Comando inválido, esperado um comando básico, uma iteração ou um 'if'");
+  return false;
+}
+
+bool Parser::If()
+{
+  if (current_token_->get_lexeme() == "if") {
+    tokens_.push_back(current_token_);
+    current_token_ = scanner.GetNextToken();
+
+    if (!LexycalErrorOccurred()) {
+      if (current_token_->get_token_class() == TokenClassEnum::L_PAREN) {
+        tokens_.push_back(current_token_);
+        current_token_ = scanner.GetNextToken();
+
+        if (!LexycalErrorOccurred()) {
+          string rel_expr_code;
+
+          if (RelationalExpression(&rel_expr_code)) {
+            if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
+              tokens_.push_back(current_token_);
+              current_token_ = scanner.GetNextToken();
+
+              if (!LexycalErrorOccurred()) {
+                string if_label = GetNextLabel();
+                string else_label = GetNextLabel();
+                string code = "if " + rel_expr_code + " goto " + if_label + '\n';
+
+                PrintCode(code);
+
+                code = "goto " + else_label + '\n';
+
+                PrintCode(code);
+                PrintLabel(if_label);
+
+                if (Command()) {
+                  tokens_.push_back(current_token_);
+                  current_token_ = scanner.GetNextToken();
+
+                  if (!LexycalErrorOccurred()) {
+                    if (current_token_->get_lexeme() == "else") {
+                      string end_else_label = GetNextLabel();
+                      code = "goto " + end_else_label + '\n';
+
+                      PrintCode(code);
+                      PrintLabel(else_label);
+
+                      tokens_.push_back(current_token_);
+                      current_token_ = scanner.GetNextToken();
+
+                      if (!LexycalErrorOccurred()) {
+                        if (Command()) {
+                          PrintLabel(end_else_label);
+
+                          return true;
+                        }
+                        else {
+                          return false;
+                        }
+                      }
+                    }
+                    else {
+                      scanner.UngetToken(current_token_);
+                      PrintLabel(else_label);
+                      current_token_ = tokens_.back();
+                      tokens_.pop_back();
+                      return true;
+                    }
+                  }
+                }
+                else {
+                  return false;
+                }
+              }
+            }
+            else {
+              ReportSyntaxError("Esperado o simbolo ')'");
+            }
+          }
+        }
+      }
+      else {
+        ReportSyntaxError("Esperado o simbolo '('");
+      }
+    }
+  }
   return false;
 }
 
@@ -345,90 +379,136 @@ bool Parser::BasicCommand()
 bool Parser::Iteration()
 {
   if (current_token_->get_lexeme() == "while") {
-    tokens_.push_back(current_token_);
-    current_token_ = scanner.GetNextToken();
+    return While();
 
-    if (!LexycalErrorOccurred()) {
-      if (current_token_->get_token_class() == TokenClassEnum::L_PAREN) {
-        tokens_.push_back(current_token_);
-        current_token_ = scanner.GetNextToken();
+  }
+  else if (current_token_->get_lexeme() == "do") {
+    return DoWhile();
 
-        if (!LexycalErrorOccurred()) {
-          if (RelationalExpression()) {
+  }
+  return false;
+}
 
-            if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
+bool Parser::While()
+{
+  string loop_label = GetNextLabel();
+  string exit_label = GetNextLabel();
+  string start_label = GetNextLabel();
+
+  tokens_.push_back(current_token_);
+  current_token_ = scanner.GetNextToken();
+
+  if (!LexycalErrorOccurred()) {
+    if (current_token_->get_token_class() == TokenClassEnum::L_PAREN) {
+      tokens_.push_back(current_token_);
+      current_token_ = scanner.GetNextToken();
+
+      if (!LexycalErrorOccurred()) {
+        string rel_expr_code;
+        if (RelationalExpression(&rel_expr_code)) {
+          if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
+            tokens_.push_back(current_token_);
+            current_token_ = scanner.GetNextToken();
+
+            PrintLabel(start_label);
+              
+            string code = "if " + rel_expr_code + " goto " + loop_label + '\n';
+
+            PrintCode(code);
+
+            code = "goto " + exit_label + '\n';
+
+            PrintCode(code);
+            PrintLabel(loop_label);
+
+            if (!LexycalErrorOccurred()) {
+              if (Command()) {
+                code = "goto " + start_label + '\n';
+
+                PrintCode(code);
+                PrintLabel(exit_label);
+
+                return true;
+              }
+              else {
+                return false;
+              }
+            }
+          }
+          else{
+            ReportSyntaxError("Esperado o simbolo ')'");
+          }
+        }
+      }
+    }
+    else {
+      ReportSyntaxError("Esperado o simbolo '('");
+    }
+  }
+}
+
+bool Parser::DoWhile()
+{
+  tokens_.push_back(current_token_);
+  current_token_ = scanner.GetNextToken();
+
+  if (!LexycalErrorOccurred()) {
+    string loop_label = GetNextLabel();
+
+    PrintLabel(loop_label);
+
+    if (Command()) {
+      tokens_.push_back(current_token_);
+      current_token_ = scanner.GetNextToken();
+
+      if (!LexycalErrorOccurred()) {
+        if (current_token_->get_lexeme() == "while") {
+          tokens_.push_back(current_token_);
+          current_token_ = scanner.GetNextToken();
+
+          if (!LexycalErrorOccurred()) {
+            if (current_token_->get_token_class() == TokenClassEnum::L_PAREN) {
               tokens_.push_back(current_token_);
               current_token_ = scanner.GetNextToken();
 
               if (!LexycalErrorOccurred()) {
-                return Command();
-              }
-            }
-            else{
-              ReportSyntaxError("Esperado o simbolo ')'");
-            }
-          }
-        }
-      }
-      else {
-        ReportSyntaxError("Esperado o simbolo '('");
-      }
-    }
-  }
-  else if (current_token_->get_lexeme() == "do") {
-    tokens_.push_back(current_token_);
-    current_token_ = scanner.GetNextToken();
+                string rel_expr_code;
 
-    if (!LexycalErrorOccurred()) {
-      if (Command()) {
-        tokens_.push_back(current_token_);
-        current_token_ = scanner.GetNextToken();
+                if (RelationalExpression(&rel_expr_code)) {
+                  if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
+                    tokens_.push_back(current_token_);
+                    current_token_ = scanner.GetNextToken();
 
-        if (!LexycalErrorOccurred()) {
-          if (current_token_->get_lexeme() == "while") {
-            tokens_.push_back(current_token_);
-            current_token_ = scanner.GetNextToken();
+                    if (!LexycalErrorOccurred()) {
+                      if (current_token_->get_token_class() == TokenClassEnum::SEMICOLON) {
+                        string code = "if " + rel_expr_code + " goto " + loop_label + '\n';
 
-            if (!LexycalErrorOccurred()) {
-              if (current_token_->get_token_class() == TokenClassEnum::L_PAREN) {
-                tokens_.push_back(current_token_);
-                current_token_ = scanner.GetNextToken();
+                        PrintCode(code);
 
-                if (!LexycalErrorOccurred()) {
-                  if (RelationalExpression()) {
-
-                    if (current_token_->get_token_class() == TokenClassEnum::R_PAREN) {
-                      tokens_.push_back(current_token_);
-                      current_token_ = scanner.GetNextToken();
-
-                      if (!LexycalErrorOccurred()) {
-                        if (current_token_->get_token_class() == TokenClassEnum::SEMICOLON) {
-                          return true;
-                        }
-                        else {
-                          ReportSyntaxError("Esperado o simbolo ';' no final de uma expressão 'do' 'while'");
-                        }
+                        return true;
+                      }
+                      else {
+                        ReportSyntaxError("Esperado o simbolo ';' no final de uma expressão 'do' 'while'");
                       }
                     }
-                    else {
-                      ReportSyntaxError("Esperado o simbolo ')'");
-                    }
+                  }
+                  else {
+                    ReportSyntaxError("Esperado o simbolo ')'");
                   }
                 }
               }
-              else {
-                ReportSyntaxError("Esperado o simbolo '('");
-              }
+            }
+            else {
+              ReportSyntaxError("Esperado o simbolo '('");
             }
           }
-          else {
-            ReportSyntaxError("Esperada a palavra reservada 'while'");
-          }
+        }
+        else {
+          ReportSyntaxError("Esperada a palavra reservada 'while'");
         }
       }
     }
   }
-  return false;
 }
 
 bool Parser::Assignment()
@@ -484,7 +564,7 @@ bool Parser::Assignment()
   return false;
 }
 
-bool Parser::RelationalExpression()
+bool Parser::RelationalExpression(string *p_rel_expr_code)
 {
   DeclarationType l_expr_type = DeclarationType::NONE;
   if (ArithmeticExpression(&l_expr_type)) {
@@ -507,9 +587,7 @@ bool Parser::RelationalExpression()
         if (ArithmeticExpression(&r_expr_type)) {
           string right_operand = current_operand_;
 
-          string code = left_operand + current_operator + right_operand;
-
-          PrintCode(code);
+          *p_rel_expr_code = left_operand + current_operator + right_operand;
 
           if (IsCompatible(l_expr_type, r_expr_type)) {
             return true;
@@ -571,10 +649,10 @@ bool Parser::ArithmeticExpressionAlt(DeclarationType *my_type)
 
         string code = current_operand_ + '=' + left_operand + current_operator + right_operand + '\n';
         PrintCode(code);
-        
+
         DeclarationType r_expr_type = DeclarationType::NONE;
         if (ArithmeticExpressionAlt(&r_expr_type)) {
-          
+
 
           if (r_expr_type == DeclarationType::NONE) {
             *my_type = l_expr_type;
@@ -652,7 +730,7 @@ bool Parser::TermAlt(DeclarationType *my_type)
 
         if (!LexycalErrorOccurred()) {
           DeclarationType r_expr_type = DeclarationType::NONE;
-          string code = current_operand_ + '=' +  left_operand + current_operator + right_operand + '\n';
+          string code = current_operand_ + '=' + left_operand + current_operator + right_operand + '\n';
 
           PrintCode(code);
 
@@ -739,7 +817,7 @@ bool Parser::Factor(DeclarationType *my_type)
     *my_type = DeclarationType::FLOAT;
     result = true;
   }
-  else if(current_token_->get_token_class() == TokenClassEnum::CHAR) {
+  else if (current_token_->get_token_class() == TokenClassEnum::CHAR) {
     current_operand_ = current_token_->get_lexeme();
     *my_type = DeclarationType::CHAR;
     result = true;
@@ -839,7 +917,7 @@ Parser::DeclarationType Parser::GetHigherType(DeclarationType l_type, Declaratio
     type = l_type;
   }
   else if (l_type == DeclarationType::FLOAT && r_type == DeclarationType::INTEGER ||
-            l_type == DeclarationType::INTEGER && r_type == DeclarationType::FLOAT) 
+    l_type == DeclarationType::INTEGER && r_type == DeclarationType::FLOAT)
   {
     type = DeclarationType::FLOAT;
   }
@@ -847,7 +925,12 @@ Parser::DeclarationType Parser::GetHigherType(DeclarationType l_type, Declaratio
   return type;
 }
 
-void Parser::PrintCode(string code_str)
+inline void Parser::PrintCode(string code_str)
 {
   cout << code_str;
+}
+
+inline void Parser::PrintLabel(string label)
+{
+  cout << label << ':' << '\n';
 }

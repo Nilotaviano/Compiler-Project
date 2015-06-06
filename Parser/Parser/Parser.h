@@ -60,10 +60,13 @@ private:
   bool VariableDeclaration();		                          //decl_var> :: = <tipo> <id> {, <id>}*;
   bool Type(DeclarationType *p_declaration_type);			    //<tipo> :: = int | float | char
   bool Command();					                                //<comando> ::= <comando_básico> | <iteração> | if "("<expr_relacional>")" <comando> {else <comando>}?
+  bool If();
   bool BasicCommand();			                              //<comando_básico> ::= <atribuição> | <bloco>
   bool Iteration();				                                //<iteração> ::= while "("<expr_relacional>")" <comando> | do <comando> while "("<expr_relacional>")"";"
+  bool While();
+  bool DoWhile();
   bool Assignment();				                              //<atribuição> ::= <id> "=" <expr_arit> ";"
-  bool RelationalExpression();	                          //<expr_relacional> ::= <expr_arit> <op_relacional> <expr_arit>
+  bool RelationalExpression(string *p_rel_expr_code);     //<expr_relacional> ::= <expr_arit> <op_relacional> <expr_arit>
   bool ArithmeticExpression(DeclarationType *my_type);	  //Removed left recursion: <expr_arit> ::= <termo><expr_arit'>			//<expr_arit> ::= <expr_arit> "+" <termo>   | <expr_arit> "-" <termo> | <termo>	- LEFT RECURSIVE
   bool ArithmeticExpressionAlt(DeclarationType *my_type); //expr_arit'> ::= <empty> | "+" <termo><expr_arit'> | "-" <termo><expr_arit'> 
   bool Term(DeclarationType *my_type);					          //Removed left recursion: <termo> ::= <fator><termo'>					//<termo> ::= <termo> "*" <fator> | <termo> “/” <fator> | <fator>					- LEFT RECURSIVE
@@ -83,15 +86,13 @@ private:
   DeclarationType GetHigherType(DeclarationType l_type, DeclarationType r_type);
 
   // Code generation
-  std::list<string> label_stack_;
   string current_operand_;
   int label_count_;
   int temp_var_count_;
 
-  void PrintCode(string code_str);
-  string GetNextLabel() { return "l" + std::to_string(label_count_++);; }
-  string GetNextTempVar() { return "t" + std::to_string(temp_var_count_++); }
-  string SetLastExprVar();
-  string GetLastExprVar();
+  inline void PrintCode(string code_str);
+  inline void PrintLabel(string label);
+  inline string GetNextLabel() { return "l" + std::to_string(label_count_++);; }
+  inline string GetNextTempVar() { return "t" + std::to_string(temp_var_count_++); }
 };
 
