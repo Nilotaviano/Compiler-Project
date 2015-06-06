@@ -11,6 +11,9 @@ Parser::Parser(FILE* fp)
 :scanner(fp),
 current_scope_(0)
 {
+  temp_var_count_ = 0;
+  label_count_ = 0;
+
   map_string_type_["int"] = DeclarationType::INTEGER;
   map_string_type_["float"] = DeclarationType::FLOAT;
   map_string_type_["char"] = DeclarationType::CHAR;
@@ -26,10 +29,8 @@ void Parser::Begin()
     tokens_.push_back(current_token_);
     current_token_ = scanner.GetNextToken();
 
-    if (current_token_ == nullptr) {
-      cout << "Ok!\n";
-    }
-    else {
+    if (current_token_ != nullptr)
+    {
       ReportSyntaxError("Não pode haver código fora da função 'main'");
     }
   }
@@ -433,12 +434,15 @@ bool Parser::Iteration()
 bool Parser::Assignment()
 {
   if (current_token_->get_token_class() == TokenClassEnum::IDENTIFIER) {
+    string assigned_var_name;
     DeclarationType var_type = GetVarType(current_token_->get_lexeme());
 
     if (var_type == DeclarationType::NONE) {
       ReportSemanticalError("Variável não declarada");
     }
     else {
+      assigned_var_name = current_token_->get_lexeme();
+
       tokens_.push_back(current_token_);
       current_token_ = scanner.GetNextToken();
 
@@ -460,6 +464,9 @@ bool Parser::Assignment()
               }
 
               if (current_token_->get_token_class() == TokenClassEnum::SEMICOLON) {
+                string code = assigned_var_name + '=' + current_operand_ + '\n';
+                PrintCode(code);
+
                 return true;
               }
               else {
@@ -481,6 +488,7 @@ bool Parser::RelationalExpression()
 {
   DeclarationType l_expr_type = DeclarationType::NONE;
   if (ArithmeticExpression(&l_expr_type)) {
+    string left_operand = current_operand_;
 
     if (current_token_->get_token_class() == TokenClassEnum::EQUALS ||
       current_token_->get_token_class() == TokenClassEnum::LESS ||
@@ -489,12 +497,20 @@ bool Parser::RelationalExpression()
       current_token_->get_token_class() == TokenClassEnum::GREATER_OR_EQUAL ||
       current_token_->get_token_class() == TokenClassEnum::NOT_EQUAL)
     {
+      string current_operator = current_token_->get_lexeme();
+
       tokens_.push_back(current_token_);
       current_token_ = scanner.GetNextToken();
 
       DeclarationType r_expr_type = DeclarationType::NONE;
       if (!LexycalErrorOccurred()) {
         if (ArithmeticExpression(&r_expr_type)) {
+          string right_operand = current_operand_;
+
+          string code = left_operand + current_operator + right_operand;
+
+          PrintCode(code);
+
           if (IsCompatible(l_expr_type, r_expr_type)) {
             return true;
           }
@@ -540,6 +556,9 @@ bool Parser::ArithmeticExpressionAlt(DeclarationType *my_type)
   if (current_token_->get_token_class() == TokenClassEnum::PLUS ||
     current_token_->get_token_class() == TokenClassEnum::MINUS)
   {
+    string left_operand = current_operand_;
+    string current_operator = current_token_->get_lexeme();
+
     tokens_.push_back(current_token_);
     current_token_ = scanner.GetNextToken();
 
@@ -547,9 +566,16 @@ bool Parser::ArithmeticExpressionAlt(DeclarationType *my_type)
       DeclarationType l_expr_type = DeclarationType::NONE;
 
       if (Term(&l_expr_type)) {
-        DeclarationType r_expr_type = DeclarationType::NONE;
+        string right_operand = current_operand_;
+        current_operand_ = GetNextTempVar();
 
+        string code = current_operand_ + '=' + left_operand + current_operator + right_operand + '\n';
+        PrintCode(code);
+        
+        DeclarationType r_expr_type = DeclarationType::NONE;
         if (ArithmeticExpressionAlt(&r_expr_type)) {
+          
+
           if (r_expr_type == DeclarationType::NONE) {
             *my_type = l_expr_type;
             return true;
@@ -608,6 +634,8 @@ bool Parser::TermAlt(DeclarationType *my_type)
     current_token_->get_token_class() == TokenClassEnum::DIVISION)
   {
     bool is_division = current_token_->get_token_class() == TokenClassEnum::DIVISION;
+    string left_operand = current_operand_;
+    string current_operator = current_token_->get_lexeme();
 
     tokens_.push_back(current_token_);
     current_token_ = scanner.GetNextToken();
@@ -616,11 +644,17 @@ bool Parser::TermAlt(DeclarationType *my_type)
       DeclarationType l_expr_type;
 
       if (Factor(&l_expr_type)) {
+        string right_operand = current_operand_;
+        current_operand_ = GetNextTempVar();
+
         tokens_.push_back(current_token_);
         current_token_ = scanner.GetNextToken();
 
         if (!LexycalErrorOccurred()) {
           DeclarationType r_expr_type = DeclarationType::NONE;
+          string code = current_operand_ + '=' +  left_operand + current_operator + right_operand + '\n';
+
+          PrintCode(code);
 
           if (TermAlt(&r_expr_type)) {
             if (r_expr_type == DeclarationType::NONE) {
@@ -685,6 +719,7 @@ bool Parser::Factor(DeclarationType *my_type)
   }
   else if (current_token_->get_token_class() == TokenClassEnum::IDENTIFIER) {
     *my_type = GetVarType(current_token_->get_lexeme());
+    current_operand_ = current_token_->get_lexeme();
 
     if (*my_type != DeclarationType::NONE) {
       result = true;
@@ -696,13 +731,16 @@ bool Parser::Factor(DeclarationType *my_type)
   }
   else if (current_token_->get_token_class() == TokenClassEnum::INTEGER) {
     *my_type = DeclarationType::INTEGER;
+    current_operand_ = current_token_->get_lexeme();
     result = true;
   }
   else if (current_token_->get_token_class() == TokenClassEnum::FLOAT) {
+    current_operand_ = current_token_->get_lexeme();
     *my_type = DeclarationType::FLOAT;
     result = true;
   }
   else if(current_token_->get_token_class() == TokenClassEnum::CHAR) {
+    current_operand_ = current_token_->get_lexeme();
     *my_type = DeclarationType::CHAR;
     result = true;
   }
@@ -807,4 +845,9 @@ Parser::DeclarationType Parser::GetHigherType(DeclarationType l_type, Declaratio
   }
 
   return type;
+}
+
+void Parser::PrintCode(string code_str)
+{
+  cout << code_str;
 }

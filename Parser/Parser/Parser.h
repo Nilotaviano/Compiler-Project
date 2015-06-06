@@ -84,12 +84,14 @@ private:
 
   // Code generation
   std::list<string> label_stack_;
-  string current_temp_var;
+  string current_operand_;
   int label_count_;
   int temp_var_count_;
 
-  void PrintCode(string code_str) { cout << code_str; }
-  string GetNextLabel() { return "l" + label_count_; }
-  string GetNextVar() { return "t" + temp_var_count_; }
+  void PrintCode(string code_str);
+  string GetNextLabel() { return "l" + std::to_string(label_count_++);; }
+  string GetNextTempVar() { return "t" + std::to_string(temp_var_count_++); }
+  string SetLastExprVar();
+  string GetLastExprVar();
 };
 
