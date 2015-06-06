@@ -68,21 +68,21 @@ private:
   bool Assignment();				                              //<atribuição> ::= <id> "=" <expr_arit> ";"
   bool RelationalExpression(string *p_rel_expr_code);     //<expr_relacional> ::= <expr_arit> <op_relacional> <expr_arit>
   bool ArithmeticExpression(DeclarationType *my_type);	  //Removed left recursion: <expr_arit> ::= <termo><expr_arit'>			//<expr_arit> ::= <expr_arit> "+" <termo>   | <expr_arit> "-" <termo> | <termo>	- LEFT RECURSIVE
-  bool ArithmeticExpressionAlt(DeclarationType *my_type); //expr_arit'> ::= <empty> | "+" <termo><expr_arit'> | "-" <termo><expr_arit'> 
+  bool ArithmeticExpressionAlt(DeclarationType *my_type, DeclarationType  previous_expr_type); //expr_arit'> ::= <empty> | "+" <termo><expr_arit'> | "-" <termo><expr_arit'> 
   bool Term(DeclarationType *my_type);					          //Removed left recursion: <termo> ::= <fator><termo'>					//<termo> ::= <termo> "*" <fator> | <termo> “/” <fator> | <fator>					- LEFT RECURSIVE
-  bool TermAlt(DeclarationType *my_type);					        //<termo'> ::= <empty> | "*" <fator><termo'> | "/" <fator><termo'>
+  bool TermAlt(DeclarationType *my_type, DeclarationType previous_expr_type);					        //<termo'> ::= <empty> | "*" <fator><termo'> | "/" <fator><termo'>
   bool Factor(DeclarationType *my_type);					        //<fator> ::= “(“ <expr_arit> “)” | <id> | <real> | <inteiro> | <char>
 
   //Auxiliar methods
   bool IsInFirst(TokenPtr token, Production production);
 
   //Semantic analysis
-  void IncrementScope();
-  void DecrementScope();
+  inline void IncrementScope();
+  inline void DecrementScope();
   void PushSymbolToTable(DeclarationType current_declaration_type);
   bool WasVariableDeclared();
   DeclarationType GetVarType(string var_name);
-  bool IsCompatible(DeclarationType l_type, DeclarationType r_type);
+  inline bool IsCompatible(DeclarationType l_type, DeclarationType r_type);
   DeclarationType GetHigherType(DeclarationType l_type, DeclarationType r_type);
 
   // Code generation
@@ -94,5 +94,6 @@ private:
   inline void PrintLabel(string label);
   inline string GetNextLabel() { return "l" + std::to_string(label_count_++);; }
   inline string GetNextTempVar() { return "t" + std::to_string(temp_var_count_++); }
+  void CastValuesIfNeeded(DeclarationType l_type, string *p_left_operand, DeclarationType r_type, string *p_right_operand);
 };
 

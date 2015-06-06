@@ -445,6 +445,7 @@ bool Parser::While()
       ReportSyntaxError("Esperado o simbolo '('");
     }
   }
+  return false;
 }
 
 bool Parser::DoWhile()
@@ -509,6 +510,7 @@ bool Parser::DoWhile()
       }
     }
   }
+  return false;
 }
 
 bool Parser::Assignment()
@@ -536,14 +538,12 @@ bool Parser::Assignment()
             DeclarationType expr_type = DeclarationType::NONE;
             if (ArithmeticExpression(&expr_type)) {
 
-              if (var_type != expr_type) {
-                if (var_type != DeclarationType::FLOAT || expr_type != DeclarationType::INTEGER) {
-                  ReportSemanticalError("Tipo da expressão incompatível com variável sendo atribuída.");
-                  return false;
-                }
+              if (var_type != expr_type && (var_type != DeclarationType::FLOAT || expr_type != DeclarationType::INTEGER)) {
+                ReportSemanticalError("Tipo da expressão incompatível com variável sendo atribuída.");
+                return false;
               }
-
-              if (current_token_->get_token_class() == TokenClassEnum::SEMICOLON) {
+              else if (current_token_->get_token_class() == TokenClassEnum::SEMICOLON) {
+                CastValuesIfNeeded(var_type, &assigned_var_name, expr_type, &current_operand_);
                 string code = assigned_var_name + '=' + current_operand_ + '\n';
                 PrintCode(code);
 
@@ -587,9 +587,11 @@ bool Parser::RelationalExpression(string *p_rel_expr_code)
         if (ArithmeticExpression(&r_expr_type)) {
           string right_operand = current_operand_;
 
-          *p_rel_expr_code = left_operand + current_operator + right_operand;
-
           if (IsCompatible(l_expr_type, r_expr_type)) {
+            CastValuesIfNeeded(l_expr_type, &left_operand, r_expr_type, &right_operand);
+
+            *p_rel_expr_code = left_operand + current_operator + right_operand;
+
             return true;
           }
           else {
@@ -612,7 +614,7 @@ bool Parser::ArithmeticExpression(DeclarationType *my_type)
   if (Term(&l_expr_type)) {
     DeclarationType r_expr_type = DeclarationType::NONE;
 
-    if (ArithmeticExpressionAlt(&r_expr_type)) {
+    if (ArithmeticExpressionAlt(&r_expr_type, l_expr_type)) {
       if (r_expr_type == DeclarationType::NONE) {
         *my_type = l_expr_type;
         return true;
@@ -629,7 +631,7 @@ bool Parser::ArithmeticExpression(DeclarationType *my_type)
   return false;
 }
 
-bool Parser::ArithmeticExpressionAlt(DeclarationType *my_type)
+bool Parser::ArithmeticExpressionAlt(DeclarationType *my_type, DeclarationType previous_expr_type)
 {
   if (current_token_->get_token_class() == TokenClassEnum::PLUS ||
     current_token_->get_token_class() == TokenClassEnum::MINUS)
@@ -645,13 +647,16 @@ bool Parser::ArithmeticExpressionAlt(DeclarationType *my_type)
 
       if (Term(&l_expr_type)) {
         string right_operand = current_operand_;
+        string code;
         current_operand_ = GetNextTempVar();
 
-        string code = current_operand_ + '=' + left_operand + current_operator + right_operand + '\n';
+        CastValuesIfNeeded(previous_expr_type, &left_operand, l_expr_type, &right_operand);
+
+        code = current_operand_ + '=' + left_operand + current_operator + right_operand + '\n';
         PrintCode(code);
 
         DeclarationType r_expr_type = DeclarationType::NONE;
-        if (ArithmeticExpressionAlt(&r_expr_type)) {
+        if (ArithmeticExpressionAlt(&r_expr_type, l_expr_type)) {
 
 
           if (r_expr_type == DeclarationType::NONE) {
@@ -687,7 +692,7 @@ bool Parser::Term(DeclarationType *my_type)
     if (!LexycalErrorOccurred()) {
       DeclarationType r_expr_type = DeclarationType::NONE;
 
-      if (TermAlt(&r_expr_type)) {
+      if (TermAlt(&r_expr_type, l_expr_type)) {
         if (r_expr_type == DeclarationType::NONE) {
           *my_type = l_expr_type;
           return true;
@@ -706,7 +711,7 @@ bool Parser::Term(DeclarationType *my_type)
   return false;
 }
 
-bool Parser::TermAlt(DeclarationType *my_type)
+bool Parser::TermAlt(DeclarationType *my_type, DeclarationType previous_expr_type)
 {
   if (current_token_->get_token_class() == TokenClassEnum::MULTIPLICATION ||
     current_token_->get_token_class() == TokenClassEnum::DIVISION)
@@ -730,11 +735,14 @@ bool Parser::TermAlt(DeclarationType *my_type)
 
         if (!LexycalErrorOccurred()) {
           DeclarationType r_expr_type = DeclarationType::NONE;
+
+          CastValuesIfNeeded(previous_expr_type, &left_operand, l_expr_type, &right_operand);
+
           string code = current_operand_ + '=' + left_operand + current_operator + right_operand + '\n';
 
           PrintCode(code);
 
-          if (TermAlt(&r_expr_type)) {
+          if (TermAlt(&r_expr_type, l_expr_type)) {
             if (r_expr_type == DeclarationType::NONE) {
               if (is_division && l_expr_type == DeclarationType::INTEGER) {
                 *my_type = DeclarationType::FLOAT;
@@ -855,18 +863,18 @@ bool Parser::IsInFirst(TokenPtr token, Production production)
   return false;
 }
 
-inline void Parser::IncrementScope()
+void Parser::IncrementScope()
 {
   current_scope_++;
 }
 
-inline void Parser::DecrementScope()
+void Parser::DecrementScope()
 {
   symbol_table_.remove_if([&](Symbol s){ return s.scope == current_scope_; });
   current_scope_--;
 }
 
-inline void Parser::PushSymbolToTable(DeclarationType current_declaration_type)
+void Parser::PushSymbolToTable(DeclarationType current_declaration_type)
 {
   Symbol symbol;
 
@@ -925,12 +933,36 @@ Parser::DeclarationType Parser::GetHigherType(DeclarationType l_type, Declaratio
   return type;
 }
 
-inline void Parser::PrintCode(string code_str)
+void Parser::PrintCode(string code_str)
 {
   cout << code_str;
 }
 
-inline void Parser::PrintLabel(string label)
+void Parser::PrintLabel(string label)
 {
   cout << label << ':' << '\n';
+}
+
+void Parser::CastValuesIfNeeded(DeclarationType l_type, string *p_left_operand, DeclarationType r_type, string *p_right_operand)
+{
+  if (l_type != r_type) {
+    if (l_type == DeclarationType::FLOAT && r_type == DeclarationType::INTEGER) 
+    {
+      string tmp_var = GetNextTempVar();
+      string code = tmp_var + '=' + "float " + *p_right_operand + '\n';
+
+      PrintCode(code);
+
+      *p_right_operand = tmp_var;
+    }
+    else if (l_type == DeclarationType::INTEGER && r_type == DeclarationType::FLOAT)
+    {
+      string tmp_var = GetNextTempVar();
+      string code = tmp_var + '=' + "float " + *p_left_operand + '\n';
+
+      PrintCode(code);
+
+      *p_left_operand = tmp_var;
+    }
+  }
 }
