@@ -7,12 +7,16 @@
 using std::cout;
 using std::to_string;
 
-Parser::Parser(FILE* fp)
-:scanner(fp),
-current_scope_(0)
+Parser::Parser(FILE* in_fp, char *out_file_name)
+:scanner(in_fp)
 {
+  current_scope_ = 0;
   temp_var_count_ = 0;
   label_count_ = 0;
+
+  if (out_file_name != nullptr) {
+    outfile_.open(out_file_name);
+  }
 
   map_string_type_["int"] = DeclarationType::INTEGER;
   map_string_type_["float"] = DeclarationType::FLOAT;
@@ -935,12 +939,22 @@ Parser::DeclarationType Parser::GetHigherType(DeclarationType l_type, Declaratio
 
 void Parser::PrintCode(string code_str)
 {
-  cout << code_str;
+  if (outfile_.is_open()) {
+    outfile_ << code_str;
+  }
+  else {
+    cout << code_str;
+  }
 }
 
 void Parser::PrintLabel(string label)
 {
-  cout << label << ':' << '\n';
+  if (outfile_.is_open()) {
+    outfile_ << label << ':' << '\n';
+  }
+  else {
+    cout << label << ':' << '\n';
+  }
 }
 
 void Parser::CastValuesIfNeeded(DeclarationType l_type, string *p_left_operand, DeclarationType r_type, string *p_right_operand)

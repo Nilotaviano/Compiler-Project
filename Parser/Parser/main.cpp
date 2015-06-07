@@ -1,5 +1,6 @@
 #include <iostream>
 #include <memory>
+#include <fstream>
 
 #include "Parser.h"
 
@@ -7,12 +8,13 @@ using std::cout;
 
 int main(int argc, char* argv[])
 {
-  if (argc == 2) {
-    char *file_name = argv[1];
-    FILE *fp = fopen(file_name, "r");
-    
-    if (fp != nullptr) {
-      Parser parser(fp);
+  if (argc >= 2) {
+    char *in_file_name = argv[1];
+    FILE *in_fp = fopen(in_file_name, "r");
+    char *out_file_name = argc > 2 ? argv[2] : nullptr;
+
+    if (in_fp != nullptr) {
+      Parser parser(in_fp, out_file_name);
 
       parser.Begin();
     }

@@ -4,6 +4,8 @@
 #include "Token.h"
 #include "list"
 
+#include <fstream>
+
 class Parser
 {
 //Auxiliar structures
@@ -36,7 +38,7 @@ private:
     FACTOR
   };
 public:
-  Parser(FILE* fp);
+  Parser(FILE* in_fp, char *out_file_name);
   ~Parser();
   void Begin();
 
@@ -86,6 +88,7 @@ private:
   DeclarationType GetHigherType(DeclarationType l_type, DeclarationType r_type);
 
   // Code generation
+  std::ofstream outfile_;
   string current_operand_;
   int label_count_;
   int temp_var_count_;
